@@ -25,7 +25,8 @@ This version requires Python 3 and ``future`` and ``irc`` packages installed.
    $ pip install future
    $ pip install irc
    $ python setup.py install
-   $ python scripts/runlyntin```
+   $ python scripts/runlyntin
+```
 
 Why Lyntin
 ==========
