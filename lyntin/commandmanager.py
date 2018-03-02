@@ -54,10 +54,13 @@ X{default_resolver_hook}::
    commandname - the name of the command that was executed
 
 """
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import inspect, re
 from lyntin import manager, exported, argparser, utils
 
-class _CommandData:
+class _CommandData(object):
   """
   Holds data relating to a command.  It's a helper class.
   """
@@ -102,7 +105,7 @@ class CommandManager(manager.Manager):
     @return: all the commands that have been registered
     @rtype:  list of strings
     """
-    return self._commands.keys()
+    return list(self._commands.keys())
 
   def addCommand(self, name, func, arguments=None, argoptions=None, helptext=""):
     """
@@ -127,7 +130,7 @@ class CommandManager(manager.Manager):
     @raise Exception: if the argument spec for the command is unparseable
     """
     if not callable(func):
-      raise ValueError, "%s is uncallable." % name
+      raise ValueError("%s is uncallable." % name)
 
     cd = _CommandData()
 
@@ -139,8 +142,8 @@ class CommandManager(manager.Manager):
         cd.setName(name)
         cd.setArgParser(argparser.ArgumentParser(arguments, argoptions))
         syntaxline = utils.wrap_text(cd.getArgParser().syntaxline, 60, 6)
-      except Exception, e:
-        raise Exception, "Error with arguments for command %s, (%s)" % (name,e)
+      except Exception as e:
+        raise Exception("Error with arguments for command %s, (%s)" % (name,e))
 
     cd.setFunc(func)
 
@@ -182,7 +185,7 @@ class CommandManager(manager.Manager):
         succesfully.
     @rtype: boolean
     """
-    if self._commands.has_key(name):
+    if name in self._commands:
       cd = self._commands[name]
       del self._commands[name]
       try:
@@ -202,15 +205,15 @@ class CommandManager(manager.Manager):
     @return: the function in question or None
     @rtype:  function
     """
-    if self._commands.has_key(name):
+    if name in self._commands:
       return self._commands[name].getFunc()
 
-    if self._commands.has_key("^" + name):
+    if "^" + name in self._commands:
       return self._commands["^" + name].getFunc()
 
     # this is kind of a kluge to handle the #@ arbitrary
     # python stuff so that it can be in its own module.
-    if name.startswith("@") and self._commands.has_key("@"):
+    if name.startswith("@") and "@" in self._commands:
       return self._commands["@"].getFunc()
 
     return None
@@ -227,7 +230,7 @@ class CommandManager(manager.Manager):
         into a dictionary to pass to the command function
     @rtype: ArgParser instance
     """
-    if self._commands.has_key(name):
+    if name in self._commands:
       return self._commands[name].getArgParser()
 
     return None
@@ -297,11 +300,11 @@ class CommandManager(manager.Manager):
               argdict = argumentparser.parse(words[1], resolver)
               argdict["command"]=mem
               command(ses, argdict, input)
-            except ValueError, e:
+            except ValueError as e:
               exported.write_error("%s: %s\nsyntax: %s%s %s" % 
                                    (fixedmem, e, commandchar, fixedmem,
                                     argumentparser.syntaxline))
-            except argparser.ParserException, e:
+            except argparser.ParserException as e:
               exported.write_error("%s: %s\nsyntax: %s%s %s" % 
                                    (fixedmem, e, commandchar, fixedmem,
                                     argumentparser.syntaxline))

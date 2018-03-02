@@ -23,12 +23,15 @@ This module defines the LoggerManager which handles logging.
 
 Logging can be turned on and shut off on a session by session basis.
 """
-import string, os, thread
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
+import string, os, _thread
 from lyntin import ansi, manager, config, utils, exported, constants
 from lyntin.modules import modutils
 
 
-class LoggerData:
+class LoggerData(object):
   def __init__(self, session):
     self._logfile = None
     self._session = session
@@ -40,7 +43,7 @@ class LoggerData:
     self._prompt = None
     self._userprefix = ''
 
-    self._lock = thread.allocate_lock()
+    self._lock = _thread.allocate_lock()
 
   def log(self, input):
     """
@@ -214,21 +217,21 @@ class LoggerManager(manager.Manager):
     self._loggers = {}
 
   def clear(self, ses):
-    if self._loggers.has_key(ses):
+    if ses in self._loggers:
       self._loggers[ses].clear()
 
   def getStatus(self, ses):
-    if self._loggers.has_key(ses):
+    if ses in self._loggers:
       return self._loggers[ses].getStatus()
     return "logging not enabled"
 
   def removeSession(self, ses):
-    if self._loggers.has_key(ses):
+    if ses in self._loggers:
       self._loggers[ses].closeLogFile()
       del self._loggers[ses]
 
   def getLogData(self, ses):
-    if self._loggers.has_key(ses):
+    if ses in self._loggers:
       return self._loggers[ses]
 
     logger = LoggerData(ses)
@@ -309,7 +312,7 @@ def log_cmd(ses, args, input):
       logname = loggerdata._logfile.name
       loggerdata.closeLogFile()
       exported.write_message("log: stopped logging to '%s'." % logname, ses)
-    except Exception, e:
+    except Exception as e:
       exported.write_error("log: logfile cannot be closed (%s)." % (e), ses)
     return
 
@@ -333,7 +336,7 @@ def log_cmd(ses, args, input):
       stripansimessage = ""
 
     exported.write_message("log: starting logging to '%s'%s." % (logfile, stripansimessage), ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_error("log: logfile cannot be opened for appending. %s" % (e), ses)
 
 commands_dict["log"] = (log_cmd, 'logfile= databuffer:boolean=false stripansi:boolean=true userprefix=')
@@ -356,7 +359,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global lm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("logger")
 
   exported.hook_unregister("to_mud_hook", lm.tomudfilter)

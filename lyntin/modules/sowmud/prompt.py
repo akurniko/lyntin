@@ -1,83 +1,62 @@
+from builtins import object
 from lyntin import exported, utils, ansi, settings
-from lyntin.modules import lyntinuser
 import time
 
-class Prompt():
-  def __init__(self):
+class Prompt(object):
+  def __init__(self, event_classifier):
     # First few numbers, then not greedy for exits to not consume >, finally not
     # mapped to the group in the match result spaces if any
-    self.non_battle_compiled = utils.compile_regexp("r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C Вых:(?P<exits>.*?)>(?:\s*)$]".decode("utf-8"), 1)
-    self.battle_compiled = utils.compile_regexp("r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C \[.+?\] \[.+?\] Вых:(?P<exits>.*?)>(?:\s*)$]".decode("utf-8"), 1)
-    self.assist_battle_compiled = utils.compile_regexp("r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C \[.+?\]-\[.+?\] \[.+?\] Вых:(?P<exits>.*?)>(?:\s*)$]".decode("utf-8"), 1)
+    self.non_battle_compiled = utils.compile_regexp(u"r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C Вых:(?P<exits>.*?)>(?:\s*)$]", 1)
+    self.battle_compiled = utils.compile_regexp(u"r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C \[.+?\] \[.+?\] Вых:(?P<exits>.*?)>(?:\s*)$]", 1)
+    self.assist_battle_compiled = utils.compile_regexp(u"r[^(?P<hp>\d+)H (?P<mana>\d+)M (?P<moves>\d+)V (\d+)(X|MX) (\d+)C \[.+?\]-\[.+?\] \[.+?\] Вых:(?P<exits>.*?)>(?:\s*)$]", 1)
+    self._event_classifier = event_classifier
+
     self._exits = None
 
     self._hp = 0
     self._mana = 0
     self._moves = 0
 
-    self._prompt = False
     self._last_received = None
     self._last_printed = None
 
-  def mudfilter(self, text):
-    colorline = utils.filter_cm(text)
-    nocolorline = ansi.filter_ansi(colorline)
+    self._event_classifier.add_event("prompt", self.non_battle_compiled)
+    self._event_classifier.add_event("prompt", self.battle_compiled)
+    self._event_classifier.add_event("prompt", self.assist_battle_compiled)
+    self._event_classifier.add_callback("prompt", self)
 
-    match = self.non_battle_compiled.search(nocolorline)
-    if not match:
-      match = self.battle_compiled.search(nocolorline)
-    if not match:
-      match = self.assist_battle_compiled.search(nocolorline)
-    if match:
-      #exported.write_message("Got prompt with {0} HP, {1} M, {2} moves ".format(match.group("hp"), match.group("mana"), match.group("moves")))
-      old_exits = self._exits
-      old_hp = int(self._hp)
-      old_mana = int(self._mana)
-      old_moves = int(self._moves)
+  def on_event(self, ev_type, match):
+    if ev_type != "prompt":
+      return
 
-      self._hp = int(match.group("hp"))
-      self._mana = int(match.group("mana"))
-      self._moves = int(match.group("moves"))
-      self._exits = match.group("exits")
-      self._prompt = True
+    old_exits = self._exits
+    old_hp = int(self._hp)
+    old_mana = int(self._mana)
+    old_moves = int(self._moves)
 
-      self._last_received = time.time()
-      lyntinuser.on_prompt()
+    self._hp = int(match.group("hp"))
+    self._mana = int(match.group("mana"))
+    self._moves = int(match.group("moves"))
+    self._exits = match.group("exits")
 
-      # Do not print the prompt too often and do not print the same prompt
-      if (((self._last_printed is not None) and
-          (self._last_received - self._last_printed < 1) and
-          (self._exits == old_exits)) or 
+    self._last_received = time.time()
+
+    # Do not print the prompt too often and do not print the same prompt
+    if (((self._last_printed is not None) and
+         (self._last_received - self._last_printed < 1) and
+         (self._exits == old_exits)) or 
          ((old_hp == self._hp) and
-          (old_mana == self._mana) and
-          (old_moves == self._moves))):
-        return ""
-      else:
-        self._last_printed = self._last_received
-        return text
-
+         (old_mana == self._mana) and
+         (old_moves == self._moves))):
+      self._event_classifier.gag_current()
     else:
-      if self._prompt and self._last_printed == self._last_received:
-        text = "\n" + text
-      self._prompt = False
-      return text
-      #exported.write_message("Got no prompt (%s)" % text)
+      self._last_printed = self._last_received
 
   def exits(self):
     return self._exits
 
   def current(self):
-    return self._prompt
+    return self._event_classifier.current() == "prompt"
 
   def timestamp(self):
     return self._last_received
-
-  def turn_on(self):
-    enc = self.non_battle_compiled.pattern.encode(settings.LOCAL_ENCODING)
-    exported.write_message("pattern {0}".format(enc))
-    #exported.lyntin_command("#action {^ >} {}")
-    pass
-
-  def turn_off(self):
-    #exported.lyntin_command("#action {^ >} {}")
-    pass

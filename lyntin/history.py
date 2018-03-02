@@ -23,7 +23,8 @@ The HistoryManager keeps track of the last 1000 lines of user input
 X{history}. The HistoryManager is a singleton and it's on an engine 
 scoping thus we don't keep track of history per session.
 """
-import manager
+from __future__ import absolute_import
+from . import manager
 
 class HistoryManager(manager.Manager):
   """

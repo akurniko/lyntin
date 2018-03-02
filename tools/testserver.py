@@ -12,13 +12,20 @@ This new test-server is a patchwork of stuff from the existing test server
 and code I wrote for the Varium mud server way back when.  It is actually
 a functional mini-mud now.
 """
-import socket, sys, Queue, select, string
-import connection, toolsutils
-from toolsutils import wrap_text
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import filter
+from builtins import str
+from builtins import object
+import socket, sys, queue, select, string
+from . import connection, toolsutils
+from .toolsutils import wrap_text
 
 my_world = None
 
-class Event:
+class Event(object):
   def __init__(self):
     pass
 
@@ -46,7 +53,7 @@ class HeartbeatEvent(Event):
   def execute(self, world):
     self._source.heartbeat(world)
 
-class NPC:
+class NPC(object):
   def __init__(self, world):
     self._world = world
     self._name = "Joe"
@@ -77,9 +84,9 @@ class Neil(NPC):
       self._world.spamroom(self._name + " says, \"Mighty fine morning, isn't it?\"\n")
 
 
-class World:
+class World(object):
   def __init__(self, options):
-    self._event_queue = Queue.Queue(0)
+    self._event_queue = queue.Queue(0)
     self._worker = None
     self._options = options
     self._ms = None
@@ -124,12 +131,12 @@ class World:
         event = self._event_queue.get(0)
         es = str(event)
         if es:
-          print "handling: '%s'" % es
+          print("handling: '%s'" % es)
 
         try:
           event.execute(self)
-        except Exception, e:
-          print "exception: %s" % e
+        except Exception as e:
+          print("exception: %s" % e)
 
           if hasattr(event, 'conn'):
             try:
@@ -148,7 +155,7 @@ class World:
       self._ms._conns.remove(conn)
     if hasattr(conn, '_name'):
       self.spamroom("%s has left the game.\n" % conn._name)
-    print "Goodbye %s" % str(conn)
+    print("Goodbye %s" % str(conn))
 
   def look(self, conn, item):
     if item:
@@ -162,7 +169,7 @@ class World:
 
     else:
       out = self._desc + "\n\n"
-      names = map(lambda x:x._name, self._ms._conns)
+      names = [x._name for x in self._ms._conns]
       for mem in self._npcs:
         names.append(mem._name)
       out += testutils.wrap_text(string.join(names, ', '), 70, 0, 0)
@@ -181,10 +188,10 @@ class World:
   def shutdown(self):
     if self._ms:
       self._ms.closedown()
-    print "Shutting down."
+    print("Shutting down.")
 
 
-class MasterServer:
+class MasterServer(object):
   def __init__(self, world, options):
     self._args = args
     self._master = None
@@ -200,7 +207,7 @@ class MasterServer:
     s.bind((host, port))
     s.listen(1)
 
-    print "Test server starting up: %s:%d" % (host, port)
+    print("Test server starting up: %s:%d" % (host, port))
     self._master = connection.Connection(self._world, s, "MASTER")
     self._master._name = "Igor"
     self._master._desc = "A very busy old man."
@@ -211,9 +218,9 @@ class MasterServer:
   def networkLoop(self):
     fi = []
 
-    fns = map(lambda x:x.sockid(), self._conns)
+    fns = [x.sockid() for x in self._conns]
     fi = select.select(fns, [], [], .1)[0]
-    allconns = filter(lambda x,y=fi:x.sockid() in y, self._conns)
+    allconns = list(filter(lambda x,y=fi:x.sockid() in y, self._conns))
 
     for conn in allconns:
       if conn._addr == "MASTER":
@@ -225,8 +232,8 @@ class MasterServer:
 
       else:
         try: new_data = conn._sock.recv(1024) 
-        except Exception, e:
-          print "exception: %s" % e
+        except Exception as e:
+          print("exception: %s" % e)
           if conn in self._conns:
             self._conns.remove(conn)
           conn.killConn()
@@ -241,7 +248,7 @@ class MasterServer:
 
   def closedown(self):
     try: self._master.sockid().close()
-    except Exception, e: print "closing down master socket: '%s'" % e
+    except Exception as e: print("closing down master socket: '%s'" % e)
     for mem in self._conns:
       if mem._addr == "MASTER":
         continue
@@ -253,13 +260,13 @@ class MasterServer:
 
 
 def print_syntax(message=""):
-  print "testserver.py [--help] [options]"
-  print "    -h|--host <hostname> - sets the hostname to bind to"
-  print "    -p|--port <port>     - sets the port to bind to"
-  print "    --heartbeat <yes|no> - sets whether or not to execute heartbeats"
-  print
+  print("testserver.py [--help] [options]")
+  print("    -h|--host <hostname> - sets the hostname to bind to")
+  print("    -p|--port <port>     - sets the port to bind to")
+  print("    --heartbeat <yes|no> - sets whether or not to execute heartbeats")
+  print()
   if message:
-    print message
+    print(message)
 
 if __name__ == '__main__':
   import testserver, signal
@@ -286,7 +293,7 @@ if __name__ == '__main__':
     i = i + 1
 
   options = {"host": "localhost", "port": "3000", "heartbeat":"yes"}
-  print "Handling arguments."
+  print("Handling arguments.")
   for mem in optlist:
     if mem[0] == "--host" or mem[0] == "-h":
       if mem[1]:
@@ -313,15 +320,15 @@ if __name__ == '__main__':
         print_syntax("error: Valid heartbeat settings are 'yes' or 'no'.")
         sys.exit(1)
 
-  print "Host: %s" % options["host"]
-  print "Port: %s" % options["port"]
+  print("Host: %s" % options["host"])
+  print("Port: %s" % options["port"])
 
   # create the world
   testserver.my_world = World(options)
   try:
     testserver.my_world.startup()
-  except Exception, e:
-    print "Outer loop exception: %s" % e
+  except Exception as e:
+    print("Outer loop exception: %s" % e)
   testserver.my_world.shutdown()
 
 # Local variables:

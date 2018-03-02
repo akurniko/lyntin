@@ -30,6 +30,8 @@ This module implements the #schedule and #unschedule commands
 as well as the completely re-implemented #tick* suite of
 commands.
 """
+from builtins import str
+from builtins import object
 import time
 from lyntin import exported, manager, utils, event
 from lyntin.modules import modutils
@@ -42,7 +44,7 @@ def truncate(text, maxwidth):
     text = text[:maxwidth] + "..."
   return text
 
-class SchedEvent:
+class SchedEvent(object):
   """ 
   Holds event data as well as handles representation of the data.
   """
@@ -62,7 +64,7 @@ class SchedEvent:
       return truncate("%s [%s] %d {%s}" % (self._id, self._ses._name, self._offset, self._cmd), 60)
     return truncate("%s [%s] %d(r) {%s}" % (self._id, self._ses._name, self._offset, self._cmd), 60)
 
-class SchedTimeEvent:
+class SchedTimeEvent(object):
   """
   Holds event data as well as handles representation of the data.
 
@@ -86,7 +88,7 @@ class SchedTimeEvent:
 
 
 
-class Scheduler:
+class Scheduler(object):
   """
   Manages scheduled data.
   """
@@ -120,12 +122,12 @@ class Scheduler:
     @rtype: list of strings
     """
     output = []
-    for listing in self._events.values():
+    for listing in list(self._events.values()):
       for mem in listing:
         if mem._ses == ses:
           output.append(repr(mem))
 
-    for listing in self._tevents.values():
+    for listing in list(self._tevents.values()):
       for mem in listing:
         if mem._ses == ses:
           output.append(repr(mem))
@@ -145,14 +147,14 @@ class Scheduler:
     @returns: the SchedEvent instance or None
     @rtype: SchedEvent
     """
-    for key in self._events.keys():
+    for key in list(self._events.keys()):
       listing = self._events[key]
       for mem in listing:
         if mem._id == id or mem._tag == id:
           mem._next_tick = key
           return mem
 
-    for key in self._tevents.keys():
+    for key in list(self._tevents.keys()):
       listing = self._tevents[key]
       for mem in listing:
         if mem._id == id or mem._tag == id:
@@ -172,13 +174,13 @@ class Scheduler:
     @rtype: list of strings
     """
     output = []
-    for listing in self._events.values():
+    for listing in list(self._events.values()):
       for mem in listing:
         if id == '*' or mem._id == id or mem._tag == id:
           output.append(repr(mem))
           listing.remove(mem)
 
-    for listing in self._tevents.values():
+    for listing in list(self._tevents.values()):
       for mem in listing:
         if id == '*' or mem._id == id or mem._tag == id:
           output.append(repr(mem))
@@ -214,7 +216,7 @@ class Scheduler:
     else:
       eventdict = self._tevents
 
-    if eventdict.has_key(tick):
+    if tick in eventdict:
       eventdict[tick].append(sevent)
     else:
       eventdict[tick] = [sevent]
@@ -233,7 +235,7 @@ class Scheduler:
 
     events = []
 
-    if self._events.has_key(tick):
+    if tick in self._events:
       for mem in self._events[tick]:
         events.append(mem)
 
@@ -244,7 +246,7 @@ class Scheduler:
     # we want to execute for this second and any previous seconds
     # that have been missed.
     sec = int(time.time())
-    keys = self._tevents.keys()
+    keys = list(self._tevents.keys())
     keys = [mem for mem in keys if mem < sec]
     for key in keys:
       for mem in self._tevents[key]:

@@ -45,11 +45,13 @@ really don't want them to be, we use #swexclude::
 
 # Originally written 2002 by Sebastian John
 
+from builtins import range
+from builtins import object
 import re, string
 from lyntin import manager, utils, exported
 from lyntin.modules import modutils
 
-class SpeedwalkHash:
+class SpeedwalkHash(object):
   def __init__(self):
     self._dirs = {}
     self.compileRegexp()
@@ -57,7 +59,7 @@ class SpeedwalkHash:
   
   def __copy__(self):
     sm = SpeedwalkManager()
-    for mem in self._dirs.keys():
+    for mem in list(self._dirs.keys()):
       sm.addDir(mem, self._dirs[mem])
 
     for mem in self._excludes:
@@ -85,9 +87,9 @@ class SpeedwalkHash:
         substring.  for example if dir was "n" and there was an alias "ln",
         that would raise a ValueError.
     """
-    for mem in self._dirs.keys():
+    for mem in list(self._dirs.keys()):
       if mem.find(dir) != -1:
-        raise ValueError, "possible ambiguity"
+        raise ValueError("possible ambiguity")
     self._dirs[alias] = dir
     self.compileRegexp()
   
@@ -119,7 +121,7 @@ class SpeedwalkHash:
         speedwalking aliases we're managing
     @rtype: list of (string, string)
     """
-    dirs = self._dirs.items()
+    dirs = list(self._dirs.items())
     dirs.sort()
     return dirs
   
@@ -137,7 +139,7 @@ class SpeedwalkHash:
     @returns: list of strings where each string represents a speedwalk alias
     @rtype: list of strings
     """
-    listing = self._dirs.keys()
+    listing = list(self._dirs.keys())
     if text:
       listing = utils.expand_text(text, listing)
     
@@ -147,7 +149,7 @@ class SpeedwalkHash:
 
   def getDirsInfoMappings(self):
     l = []
-    for mem in self._dirs.keys():
+    for mem in list(self._dirs.keys()):
       l.append( { "alias": mem, "dir": self._dirs[mem] } )
 
     return l
@@ -167,11 +169,11 @@ class SpeedwalkHash:
     Also maintains self._aliases the default excludes.
     """
     if self._dirs:
-      keys = "|".join(self._dirs.keys())
+      keys = "|".join(list(self._dirs.keys()))
       regexp = "^(\\d*(%s))+$" % (keys)
       self._regexp = re.compile(regexp)
-      self._aliases = self._dirs.values()
-      self._dirs_available = self._dirs.keys()
+      self._aliases = list(self._dirs.values())
+      self._dirs_available = list(self._dirs.keys())
     else:
       self._regexp = None
       self._aliases = []
@@ -272,47 +274,47 @@ class SpeedwalkManager(manager.Manager):
     self._hashes = {}
 
   def clearDirs(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       self._hashes[ses].clearDirs()
 
   def addDir(self, ses, alias, dir):
-    if not self._hashes.has_key(ses):
+    if ses not in self._hashes:
       self._hashes[ses] = SpeedwalkHash()
     self._hashes[ses].addDir(alias, dir)
 
   def removeDirs(self, ses, alias):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       return self._hashes[ses].removeDirs(alias)
     return []
 
   def getDirs(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       return self._hashes[ses].getDirs()
     return []
 
   def getDirsInfo(self, ses, text=""):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       return self._hashes[ses].getDirsInfo(text)
     return []
 
   def getStatus(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       sdata = self._hashes[ses]
       return "%s %s" % (sdata.getDirStatus(), sdata.getExcludeStatus())
     return "0 dir(s). 0 exclude(s)."
 
   def addExclude(self, ses, exclude):
-    if not self._hashes.has_key(ses):
+    if ses not in self._hashes:
       self._hashes[ses] = SpeedwalkHash()
     self._hashes[ses].addExclude(exclude)
 
   def removeExcludes(self, ses, exclude):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       return self._hashes[ses].removeExcludes(exclude)
     return []
 
   def getExcludesInfo(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       return self._hashes[ses].getExcludesInfo()
     return []
 
@@ -332,7 +334,7 @@ class SpeedwalkManager(manager.Manager):
     if item not in ["swexclude", "swdir"]:
       raise ValueError("%s is not a valid item for this manager." % item)
 
-    if not self._hashes.has_key(ses):
+    if ses not in self._hashes:
       return []
 
     if item == "swdir":
@@ -341,27 +343,27 @@ class SpeedwalkManager(manager.Manager):
     return self._hashes.getExcludesInfoMappings()
 
   def getInfo(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       myhash = self._hashes[ses]
       return myhash.getDirsInfo() + myhash.getExcludesInfo() 
     return []
 
   def clear(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       self._hashes[ses].clear()
   
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._hashes.has_key(basesession):
+      if basesession in self._hashes:
         sdata = self._hashes[basesession]
-        for mem in sdata._dirs.keys():
+        for mem in list(sdata._dirs.keys()):
           self.addDir(newsession, mem, sdata._dirs[mem])
 
         for mem in sdata._excludes:
           self.addExclude(newsession, mem)
 
   def removeSession(self, ses):
-    if self._hashes.has_key(ses):
+    if ses in self._hashes:
       del self._hashes[ses]
 
   def persist(self, args):
@@ -386,7 +388,7 @@ class SpeedwalkManager(manager.Manager):
     verbatim = args["verbatim"]
     text = args["dataadj"]
     
-    if not self._hashes.has_key(ses) or exported.get_config("speedwalk", ses) == 0 or verbatim == 1:
+    if ses not in self._hashes or exported.get_config("speedwalk", ses) == 0 or verbatim == 1:
       return text
 
     sdata = self._hashes[ses]
@@ -464,7 +466,7 @@ def swdir_cmd(ses, args, input):
     exported.get_manager("speedwalk").addDir(ses, alias, dir)
     if not quiet:
       exported.write_message("swdir: {%s} {%s} added." % (alias, dir), ses)
-  except ValueError, e:
+  except ValueError as e:
     exported.write_error("swdir: cannot add alias '%s': %s." % (alias, e), ses)
 
 commands_dict["swdir"] = (swdir_cmd, "alias= dir= quiet:boolean=false")
@@ -553,7 +555,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global sm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("speedwalk")
 
   exported.hook_unregister("user_filter_hook", sm.userfilter)

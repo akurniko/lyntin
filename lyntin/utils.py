@@ -23,8 +23,18 @@ This has a series of utility functions that aren't related to classes
 in the application, but are useful in a variety of places.  They're 
 not dependent on application things, so it's easier to test them.
 """
+from __future__ import absolute_import
+from __future__ import division
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import string, re, time, types, os
-import ansi, constants
+from . import ansi, constants
 
 # for finding non-escaped semi-colons in user input
 SPLIT = ";"
@@ -38,7 +48,7 @@ TIME_REGEXP3=re.compile(r"^(?P<hour>0|1[3-9]|2[0-3]):(?P<minute>[0-5][0-9])(:(?P
 # for finding %... variables
 PVAR_REGEXP = re.compile(r'%+(-?(\d+):?-?(\d*)|:-?(\d+))')
 
-class PriorityQueue:
+class PriorityQueue(object):
   """
   This is a pretty basic priority queue.
   """
@@ -58,7 +68,7 @@ class PriorityQueue:
     saves cycles since it puts the ordering of the list up front
     rather than when the orderedlist is retrieved.
     """
-    priorities = self._prioritymap.keys();
+    priorities = list(self._prioritymap.keys());
     priorities.sort()
 
     self._orderedlist = []
@@ -86,7 +96,7 @@ class PriorityQueue:
       exported.write_error("Function %s not callable." % repr(func))
       return
 
-    if self._prioritymap.has_key(priority):
+    if priority in self._prioritymap:
       self._prioritymap[priority].append(func)
     else:
       self._prioritymap[priority] = [func]
@@ -100,7 +110,7 @@ class PriorityQueue:
     @param func: the function to unregister
     @type  func: function
     """
-    for priority in self._prioritymap.keys():
+    for priority in list(self._prioritymap.keys()):
       if func in self._prioritymap[priority]:
         self._prioritymap[priority].remove(func)
 
@@ -189,7 +199,7 @@ def http_get(url):
 
   @raises ValueError: if the url is not valid or if the resource doesn't exist
   """
-  import httplib
+  import http.client
   if url.find("http://") == -1:
     raise ValueError("This is not a valid url.")
 
@@ -200,7 +210,7 @@ def http_get(url):
   host, resource = filename.split("/", 1)
 
   resource = "/" + resource
-  sock = httplib.HTTPConnection(host)
+  sock = http.client.HTTPConnection(host)
   sock.request("GET", resource)
   r = sock.getresponse()
   status = r.status
@@ -563,7 +573,7 @@ def wrap_text(textlist, wraplength=50, indent=0, firstline=0):
     wraplength = wraplength - 2
 
   # split the formatting from the text
-  if type(textlist) == types.StringType:
+  if isinstance(textlist, str):
     textlist = ansi.split_ansi_from_text(textlist)
 
   for i in range(0, len(textlist)):
@@ -589,14 +599,19 @@ def wrap_text(textlist, wraplength=50, indent=0, firstline=0):
       # print "'" + textlist[i] + "'", len(textlist[i]), x
       if textlist[i][x] == "\n":
         if indent:
-          textlist[i] = (textlist[i][:x+1] + (indent * ' ') + textlist[i][x+1:].lstrip())
+          res = (textlist[i][:x+1] + (indent * ' ') + textlist[i][x+1:].lstrip())
         else:
-          textlist[i] = (textlist[i][:x+1] + textlist[i][x+1:])
+          res = (textlist[i][:x+1] + textlist[i][x+1:])
       else:
         if indent:
-          textlist[i] = (textlist[i][:x+1] + '\n' + (indent * ' ') + textlist[i][x+1:].lstrip())
+          res = (textlist[i][:x+1] + '\n' + (indent * ' ') + textlist[i][x+1:].lstrip())
         else:
-          textlist[i] = (textlist[i][:x+1] + '\n' + textlist[i][x+1:])
+          res = (textlist[i][:x+1] + '\n' + textlist[i][x+1:])
+
+      if isinstance(textlist, str):
+          textlist = textlist[:i] + res + textlist[(i+1):]
+      else:
+          textlist[i] = res
 
       marker = x + indent + 2
       wrapcount = 0
@@ -620,7 +635,7 @@ def build_graph(numbers_dict):
   if not numbers_dict:
     return "No data available."
 
-  values = numbers_dict.values()
+  values = list(numbers_dict.values())
   values.sort()
   min = values[0]
   max = values[-1]
@@ -633,19 +648,19 @@ def build_graph(numbers_dict):
   elif max < 140:
     divisor = 2
   else:
-    divisor = max / 60
+    divisor = old_div(max, 60)
 
-  keys = numbers_dict.keys()
+  keys = list(numbers_dict.keys())
   keys.sort(lambda x,y: cmp(len(x), len(y)))
   maxlength = len(keys[-1])
 
   graph = []
-  graph.append("  " + " ".ljust(maxlength+8) + "0" + ("-" * (max / divisor)) + ("%d" % max))
+  graph.append("  " + " ".ljust(maxlength+8) + "0" + ("-" * (old_div(max, divisor))) + ("%d" % max))
 
   keys.sort()
   for k in keys:
     v = numbers_dict[k]
-    graph.append("  " + k.ljust(maxlength+1) + "- " + ("%d" % v).ljust(5) + "|" + ("=" * (v / divisor)))
+    graph.append("  " + k.ljust(maxlength+1) + "- " + ("%d" % v).ljust(5) + "|" + ("=" * (old_div(v, divisor))))
 
   return "\n".join(graph)
 
@@ -676,8 +691,8 @@ def columnize(textlist, screenwidth=72, indent=0):
   for mem in textlist:
     maxwidth = max(maxwidth, len(mem))
 
-  numcols = max(1, (screenwidth + SPACING) / (maxwidth + SPACING))
-  numrows = (len(textlist) + numcols - 1) / numcols
+  numcols = max(1, old_div((screenwidth + SPACING), (maxwidth + SPACING)))
+  numrows = old_div((len(textlist) + numcols - 1), numcols)
 
   rows = []
   # We can't just do "rows = ([],) * rows" -- need distinct lists
@@ -689,7 +704,7 @@ def columnize(textlist, screenwidth=72, indent=0):
     rows[idx].append(mem.ljust(maxwidth))
     idx = (idx + 1) % numrows
 
-  rows = map(string.rstrip, map(string.join, rows))
+  rows = list(map(''.rstrip, list(map(''.join, rows))))
   return (indent * " ") + ("\n" + (indent * " ")).join(rows)
 
 
@@ -813,7 +828,7 @@ def parse_time(timearg):
   
   try:
     return time.mktime(timetuple)
-  except Exception, e:
+  except Exception as e:
     raise ValueError("Invalid time string: %s" % e)
 
 
@@ -912,9 +927,9 @@ def expand_vars(text, varmap):
   if not ("%" in text or "$" in text) or len(text) == 0:
     return text
 
-  varmapkeys = varmap.keys()
+  varmapkeys = list(varmap.keys())
   # we want to sort them in order of longest first
-  varmapkeys.sort(lambda x,y: cmp(len(y), len(x)))
+  varmapkeys.sort(key = lambda x: -len(x))
   i = 0
 
   # we go through the text expanding things one at a time.
@@ -1129,8 +1144,8 @@ def expand_placement_vars(input, expansion):
       varlookup[mem] = ' '.join(inputsplit[start:end])
 
     # run through the replacements
-    vars = varlookup.keys()
-    vars.sort( lambda x,y: -1 * len(x).__cmp__(len(y)) )
+    vars = list(varlookup.keys())
+    vars.sort( key = lambda x: len(x) )
     
     for mem in vars:
       expansion = re.sub("(?<!%)%" + mem, varlookup[mem], expansion)

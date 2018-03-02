@@ -44,6 +44,7 @@ help file text, and also exporting help content into some format
 which then can be converted to a variety of other formats: HTML,
 XML, JoesMagicTextMarkup, ...
 """
+from __future__ import print_function
 import types
 from lyntin import utils, config, manager
 
@@ -93,13 +94,13 @@ class HelpManager(manager.Manager):
 
     directives, helptext = _parse_directives(helptext)
 
-    if directives.has_key("category"):
+    if "category" in directives:
       categorylist = directives["category"].split(".") + categorylist
 
     place = self._help_tree
     for mem in categorylist:
-      if place.has_key(mem):
-        if type(place[mem]) == types.DictType:
+      if mem in place:
+        if type(place[mem]) == dict:
           place = place[mem]
         else:
           tmp = place[mem]
@@ -110,8 +111,8 @@ class HelpManager(manager.Manager):
         place[mem] = {}
         place = place[mem]
 
-    if place.has_key(helpname):
-      if type(place[helpname]) == types.DictType:
+    if helpname in place:
+      if type(place[helpname]) == dict:
         place[helpname]["__doc__"] = helptext
       else:
         place[helpname] = helptext
@@ -140,13 +141,13 @@ class HelpManager(manager.Manager):
     breadcrumbs = []
 
     for mem in categories:
-      if place.has_key(mem):
+      if mem in place:
         breadcrumbs.append(place)
         place = place[mem]
       else:
         raise ValueError("Topic '%s' does not exist." % fqn)
 
-    if place.has_key(name):
+    if name in place:
       del place[name]
       self._trimTree(self._help_tree)
 
@@ -163,11 +164,11 @@ class HelpManager(manager.Manager):
     @param tree: the map of topics to trim
     @type  tree: dict
     """
-    for mem in tree.keys():
-      if type(tree[mem]) == types.DictType:
+    for mem in list(tree.keys()):
+      if type(tree[mem]) == dict:
         self._trimTree(tree[mem])
 
-        if len(tree[mem].keys()) == 0:
+        if len(list(tree[mem].keys())) == 0:
           del tree[mem]
 
   def getNode(self, fqn):
@@ -195,25 +196,25 @@ class HelpManager(manager.Manager):
     tree = self._help_tree
 
     for mem in categorylist:
-      if type(tree) == types.DictType:
-        if tree.has_key(mem):
+      if type(tree) == dict:
+        if mem in tree:
           tree = tree[mem]
         else:
           raise ValueError("FQN '%s' doesn't exist." % fqn)
       else:
         raise ValueError("FQN '%s' doesn't exist." % fqn)
 
-    if type(tree) == types.DictType:
-      list = []
-      for key, value in tree.items():
-        list.append("%s.%s" % (".".join(categorylist), key))
+    if type(tree) == dict:
+      res = []
+      for key, value in list(tree.items()):
+        res.append("%s.%s" % (".".join(categorylist), key))
 
-      list.sort()
-      if tree.has_key("__doc__"):
-        list.remove(".".join(categorylist) + ".__doc__")
-        return (tree["__doc__"], list)
+      res.sort()
+      if "__doc__" in tree:
+        res.remove(".".join(categorylist) + ".__doc__")
+        return (tree["__doc__"], res)
 
-      return ('', list)
+      return ('', res)
 
     return (tree, [])
 
@@ -243,8 +244,8 @@ class HelpManager(manager.Manager):
     found = 1
 
     for mem in categorylist:
-      if type(tree) == types.DictType:
-        if tree.has_key(mem):
+      if type(tree) == dict:
+        if mem in tree:
           tree = tree[mem]
           breadcrumbs += "." + mem
         else:
@@ -263,11 +264,11 @@ class HelpManager(manager.Manager):
       while tosearch:
         nextbreadcrumbs, nextnode = tosearch[0]
         tosearch = tosearch[1:]
-        for key in nextnode.keys():
+        for key in list(nextnode.keys()):
           currentbreadcrumbs = "%s.%s" % (nextbreadcrumbs, key)
           if key == categorylist[0]:
             potentialroots.append( (currentbreadcrumbs,nextnode[key]) )
-          if type(nextnode[key]) == types.DictType:
+          if type(nextnode[key]) == dict:
             tosearch.append( (currentbreadcrumbs,nextnode[key]) )
 
       foundnodes = []
@@ -276,7 +277,7 @@ class HelpManager(manager.Manager):
       # they have they have categorylist[1:] under them.
       for bc,node in potentialroots:
         for key in categorylist[1:]:
-          if type(node) != types.DictType or not node.has_key(key):
+          if type(node) != dict or key not in node:
             bc=None
             node=None
           else:
@@ -296,22 +297,22 @@ class HelpManager(manager.Manager):
         error = "Cannot find '%s'.  We did find this:" % fqn
       else:
         error = "Could not find exact match for '%s'.  We did find these matches:" % fqn
-        list = map(lambda x:x[0],foundnodes)
-        return (error, "", utils.columnize(textlist=list,indent=3))
+        nodes_list = [x[0] for x in foundnodes]
+        return (error, "", utils.columnize(textlist=nodes_list,indent=3))
     else:
       error = ""
 
-    if type(tree) == types.DictType:
+    if type(tree) == dict:
       toplist = []
       catlist = []
-      for key, value in tree.items():
-        if type(value) == types.DictType:
+      for key, value in list(tree.items()):
+        if type(value) == dict:
           catlist.append("%s(%d) " % (key, len(value)))
         else:
           toplist.append(key)
       toplist.sort()
       catlist.sort()
-      if tree.has_key("__doc__"):
+      if "__doc__" in tree:
         if "__doc__" in toplist: toplist.remove("__doc__")
         if "__doc__" in catlist: catlist.remove("__doc__")
         helphead = tree["__doc__"] + "\n\nOther things in this category:\n\n"
@@ -332,14 +333,14 @@ class HelpManager(manager.Manager):
     """
     if tree == None:
       tree = self._help_tree
-      print tab + "Root:"
+      print(tab + "Root:")
 
-    for mem in tree.keys():
-      if type(tree[mem]) == types.DictType:
-        print "%s  %s:" % (tab, mem)
+    for mem in list(tree.keys()):
+      if type(tree[mem]) == dict:
+        print("%s  %s:" % (tab, mem))
         self._printTree(tree[mem], tab + "  ")
       else:
-        print "%s  node: %s" % (tab, mem)
+        print("%s  node: %s" % (tab, mem))
 
 
   def _split_name(self, fqn):

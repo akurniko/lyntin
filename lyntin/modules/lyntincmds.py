@@ -21,6 +21,8 @@
 """
 This module holds commands that are new and unique to Lyntin.
 """
+from builtins import chr
+from builtins import range
 import types, re
 from lyntin import net, utils, engine, constants, exported, config
 from lyntin.modules import modutils
@@ -28,12 +30,12 @@ from lyntin.modules import modutils
 commands_dict = {}
 
 def _fixmap(w, themap):
-  keys = themap.keys()
+  keys = list(themap.keys())
   keys.sort()
   output = []
 
   for mem in keys:
-    if type(themap[mem]) == types.ListType:
+    if type(themap[mem]) == list:
       if len(themap[mem]) > 0:
         output.append("   %s %s" % (mem.ljust(w), themap[mem][0]))
         for mem2 in themap[mem][1:]:
@@ -164,7 +166,7 @@ def config_cmd(ses, args, input):
     except:
       c.change(name, value)
     exported.write_message("config: %s set to %s." % (name, value), ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_error(e)
 
 commands_dict["config"] = (config_cmd, "name= value= quiet:boolean=false")
@@ -276,7 +278,7 @@ def diagnostics_cmd(ses, args, input):
   message.append("   lyntin: %s" % (constants.VERSION[:constants.VERSION.find("\n")]))
 
   message.append("Lyntin Options:")
-  for mem in config.options.keys():
+  for mem in list(config.options.keys()):
     message.append("   %s: %s" % (mem, repr(config.options[mem])))
 
   exported.write_message("\n".join(message))
@@ -293,7 +295,7 @@ def diagnostics_cmd(ses, args, input):
       f.write(os.linesep.join(message))
       f.close()
       exported.write_message("diagnostics: written out to file %s." % logfile)
-    except Exception, e:
+    except Exception as e:
       exported.write_error("diagnostics: Error writing to file %s. %s" 
                             % (logfile, e))
 
@@ -322,7 +324,7 @@ def load():
 
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
 
 # Local variables:
 # mode:python

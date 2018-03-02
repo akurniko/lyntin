@@ -23,12 +23,3 @@ Lyntin is an open-source mud client framework written in Python which allows
 for additional functionality to be written in Python as Lyntin modules.
 """
 __docformat__ = 'epytext en'
-
-__version__ = '4.2'
-# __version__ = 'cvs-dev'
-__version_tuple__ = (4, 2, 0)   # major, minor, minor minor
-__author__ = 'Will Guaraldi <willhelm@users.sourceforge.net>'
-__url__ = 'http://lyntin.sourceforge.net/'
-
-__copyright__ = '(C) 2003-2007 FSF'
-__license__ = 'GPLv3'

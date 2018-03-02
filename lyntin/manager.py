@@ -55,7 +55,8 @@ you can do one of two things:
      import the module
 """
 
-class Manager:
+from builtins import object
+class Manager(object):
   """
   Base manager class for managing things in Lyntin.  The Manager class
   gives all managers a standard way of interacting with sessions and user

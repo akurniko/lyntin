@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+from past.builtins import cmp
+from builtins import object
 from lyntin import exported, utils, ansi, settings
 from lyntin.modules import modutils
 import time
 
-class Room():
+class Room(object):
   unknown_name = u"Безымянная комната"
 
   in_battle = u"Не получится! Вы сражаетесь за свою жизнь!"
@@ -13,7 +15,7 @@ class Room():
     self._ts = time.time()
     self._name = name
     self._desc = desc
-    self._exits = u"без выходов"
+    self._exits = []
     self._adjacent_rooms = {}
     #print self._desc
 
@@ -55,13 +57,13 @@ class Room():
     res = self._name + u" " + self._exits
     return res.encode(settings.LOCAL_ENCODING)
 
-  def __cmp__(self, other):
-    if self._name != other._name: return cmp(self._name, other._name)
-    if self._desc != other._desc: return cmp(self._desc, other._desc)
-    if self._exits != other._exits: return cmp(self._exits, other._exits)
+  def __lt__(self, other):
+    if self._name != other._name: return self._name < other._name
+    if self._desc != other._desc: return self._desc < other._desc
+    if self._exits != other._exits: return self._exits < other._exits
     return 0
 
-class Zone():
+class Zone(object):
   def __init__(self):
     self._rooms = []
     self._current_room = Room()
@@ -75,7 +77,7 @@ class Zone():
   def current_room(self):
     return self._current_room
 
-class World():
+class World(object):
   directions = ['n', 'e', 's', 'w', 'u', 'd']
   directions_sym = [u'С', u'В', u'Ю', u'З', u'^', u'v']
   opposite_directions = {'n': 's', 'e': 'w', 's': 'n', 'w': 'e', 'u': 'd', 'd': 'u'}
@@ -228,4 +230,4 @@ def load():
 
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))

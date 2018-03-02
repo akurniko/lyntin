@@ -37,10 +37,12 @@ X{from_mud_hook}::
 
    data - the raw data that was sent from the mud
 """
+from builtins import str
+from builtins import object
 import sys
 from lyntin import config, exported, constants
 
-class Event:
+class Event(object):
   """
   This is the basic Event class.  It has an enqueue method
   which enqueues the event in the event queue (in the engine

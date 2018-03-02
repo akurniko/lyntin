@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from future import standard_library
+standard_library.install_aliases()
 from lyntin import exported
 from lyntin.modules.sowmud import cmds
-import Queue
+import queue
 import time
 
 def test_cmds_start_stop(monkeypatch):

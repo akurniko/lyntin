@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
+from future import standard_library
+standard_library.install_aliases()
+from builtins import chr
 from lyntin.modules.sowmud import cler
+from lyntin.modules.sowmud import events
+from lyntin.modules.sowmud import prompt
 from lyntin import exported
 from lyntin import ansi
-import Queue
+import queue
 
 group_headers = [(u"   Имя  ", "INIT"), (u"   Имя wrong ", None),
                  (u" Имя  Рядом", "NEAR"), (u" Имя   Рядом wrong ", None),
@@ -16,11 +21,15 @@ group_setup = [u"1 Шыгос",
 
 group1_near =  [u"1 Шыгос             Д",
                 u" 2  Алиант               Н",
-                u"3 Цушка             Д",]
+                u"3 Цушка             Н",]
 
 group1_health =  [u"1 Шыгос    ooooo    Стоит     Д  Д",
                   u"2 Алиант   ooooo    Сражается Д  Н",
                   u"3 Цушка    ooooo    Стоит     Д  Н",]
+
+group2_health =  [u"1 Шыгос    ooooo    Стоит     Д  Н",
+                  u"2 Алиант   ooooo    Сражается Д  Н",
+                  u"3 Цушка    ooooo    Стоит     Н  Н",]
 
 group1_stand =  [u"1 Шыгос    ooooo    Стоит     Д  Н",
                  u"2 Алиант   ooooo    Сражается Д  Н",
@@ -42,33 +51,24 @@ stone_test = [u"1 Шыгос ooooo Стоит Д Н",
               u"25 ^[[0mКитаст          ^[[32mooooo^[[0m  ^[[1;33mСтоит    ^[[0m   ^[[1;32mД^[[0m    ^[[1;31mН^[[0m",
               u"26 ^[[0mЯромар          ^[[32mooooo^[[0m  Сражается   ^[[1;32mД^[[0m    ^[[1;31mН^[[0m"]
 
-def init_group(clerbot, group_setup):
+p1 = u"876H 1009M 66V 51503MX 0C Вых:В>"
+
+def init_group(ev_classifier, group_setup):
   for s, mode in group_headers:
     if mode == "INIT":
-      clerbot.mudfilter(s)
+      ev_classifier.mudfilter(s)
       break
 
   for g_member in group_setup:
-    clerbot.mudfilter(g_member)
+    ev_classifier.mudfilter(g_member)
 
-  clerbot.on_prompt()
-
-
-def test_group_header_regexp():
-  p1 = u"876H 1009M 66V 51503MX 0C Вых:В>"
-
-  q = Queue.Queue()
-  clerbot = cler.ClerBot(q)
-
-  for s, mode in group_headers:
-    clerbot.mudfilter(s)
-    assert clerbot.get_mode() == mode
-    clerbot.on_prompt()
-    assert clerbot.get_mode() == None
+  ev_classifier.mudfilter(p1)
 
 def test_auto_summon():
-  q = Queue.Queue()
-  clerbot = cler.ClerBot(q)
+  q = queue.Queue()
+  ec = events.EventClassifier()
+  prompt.Prompt(ec)
+  clerbot = cler.ClerBot(q, ec, u"Дарсу")
 
   init_group(clerbot, group_setup)
 
@@ -77,39 +77,96 @@ def test_auto_summon():
       clerbot.mudfilter(s)
       break
 
-  assert clerbot.get_mode() == "NEAR"
+  assert clerbot.mode() == "NEAR"
 
   for g_member in group1_near:
     clerbot.mudfilter(g_member)
 
-  clerbot.on_prompt()
-
-  assert clerbot.status() == u"Алиант\nЦушка\nШыгос\nДарсу"
+  ec.mudfilter(p1)
   assert q.get_nowait().command() == u"cast призыв Алиант"
 
-def test_undrain():
-  q = Queue.Queue()
-  clerbot = cler.ClerBot(q)
+  ec.mudfilter("Вы произнесли магические слова 'призыв'...")
+  ec.mudfilter("Алиант неожиданно появился.")
+  ec.mudfilter(p1)
+  assert q.get_nowait().command() == u"cast призыв Цушка"
+
+  ec.mudfilter("Вы произнесли магические слова 'призыв'...")
+  assert q.empty()
+
+  return q, clerbot
+
+def test_auto_summon_with_heal_on():
+  q = queue.Queue()
+  ec = events.EventClassifier()
+  prompt.Prompt(ec)
+  clerbot = cler.ClerBot(q, ec, u"Дарсу")
 
   init_group(clerbot, group_setup)
+
+  for s, mode in group_headers:
+    if mode == "NEAR":
+      clerbot.mudfilter(s)
+      break
+
+  assert clerbot.mode() == "NEAR"
+
+  for g_member in group1_near:
+    clerbot.mudfilter(g_member)
+
+  ec.mudfilter(p1)
+  assert q.get_nowait().command() == u"cast призыв Алиант"
+  ec.mudfilter("Вы произнесли магические слова 'призыв'...")
+  ec.mudfilter("Алиант неожиданно появился.")
 
   for s, mode in group_headers:
     if mode == "HEALTH":
       clerbot.mudfilter(s)
       break
 
-  assert clerbot.get_mode() == "HEALTH"
+  for g_member in group2_health:
+    clerbot.mudfilter(g_member)
+
+  ec.mudfilter(p1)
+  assert q.get_nowait().command() == u"cast призыв Цушка"
+
+  ec.mudfilter(p1)
+  assert q.empty()
+
+  return q, clerbot
+
+#  status = clerbot.group_list()
+#  assert u"Дарсу" in status
+#  assert u"Алиант" in status
+#  assert u"Шыгос" in status
+#  assert u"Цушка" in status
+
+def test_undrain():
+  q = queue.Queue()
+  ec = events.EventClassifier()
+  prompt.Prompt(ec)
+  clerbot = cler.ClerBot(q, ec, u"Дарсу")
+
+  init_group(ec, group_setup)
+
+  for s, mode in group_headers:
+    if mode == "HEALTH":
+      clerbot.mudfilter(s)
+      break
+
+  assert clerbot.mode() == "HEALTH"
 
   for g_member in group1_health:
     clerbot.mudfilter(g_member)
 
-  clerbot.on_prompt()
+  ec.mudfilter(p1)
 
   assert q.get_nowait().command() == u"cast слово.силы Шыгос"
 
 def test_stand_up(monkeypatch):
-  q = Queue.Queue()
-  clerbot = cler.ClerBot(q)
+  q = queue.Queue()
+  ec = events.EventClassifier()
+  prompt.Prompt(ec)
+  clerbot = cler.ClerBot(q, ec, u"Дарсу")
 
   def cmd(command, **kwargs):
     assert command == "stand"
@@ -122,16 +179,18 @@ def test_stand_up(monkeypatch):
       clerbot.mudfilter(s)
       break
 
-  assert clerbot.get_mode() == "HEALTH"
+  assert clerbot.mode() == "HEALTH"
 
   for g_member in group1_stand:
     clerbot.mudfilter(g_member)
 
-  clerbot.on_prompt()
+  ec.mudfilter(p1)
 
 def test_unstone():
-  q = Queue.Queue()
-  clerbot = cler.ClerBot(q)
+  q = queue.Queue()
+  ec = events.EventClassifier()
+  prompt.Prompt(ec)
+  clerbot = cler.ClerBot(q, ec, u"Дарсу")
 
   init_group(clerbot, group_setup)
 
@@ -140,11 +199,11 @@ def test_unstone():
       clerbot.mudfilter(s)
       break
 
-  assert clerbot.get_mode() == "HEALTH"
+  assert clerbot.mode() == "HEALTH"
 
   clerbot.mudfilter(color2_test.replace("^[", chr(27)))
 
-  clerbot.on_prompt()
+  ec.mudfilter(p1)
 
   assert q.get_nowait().command() == u"cast живое.прикосновение Шыгос"
 
@@ -154,10 +213,10 @@ def test_unstone():
       clerbot.mudfilter(s)
       break
 
-  assert clerbot.get_mode() == "HEALTH"
+  assert clerbot.mode() == "HEALTH"
 
   for s in stone_test:
     clerbot.mudfilter(s.replace("^[", chr(27)))
 
-  clerbot.on_prompt()
+  ec.mudfilter(p1)
   assert q.get_nowait().command() == u"cast живое.прикосновение Китаст"

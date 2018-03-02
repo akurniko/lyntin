@@ -1,41 +1,46 @@
 # -*- coding: utf-8 -*-
 from lyntin import exported
 
-def group_reset():
+def set_bot_necr(myself, irc_nick):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.group_reset()
+  bot = smm.set_bot_necr(myself, irc_nick)
 
-def group_mode( mode ):
+def set_bot_druid(myself):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.mode( mode )
+  bot = smm.set_bot_druid(myself)
 
-def group_member_near(num, name, near):
+def set_bot_mage(myself, irc_nick):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.group_member_near( num, name.strip().decode("utf-8"), near )
-  #print "adding group member near {0}".format(name.encode("cp866"))
+  bot = smm.set_bot_mage(myself, irc_nick)
 
-def toggle_auto_summon():
+def set_bot_cler(myself, irc_nick):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.toggle_auto_summon()
+  bot = smm.set_bot_cler(myself, irc_nick)
 
-def on_prompt():
-  pass
-
-def on_appear(name):
+def set_rotation(rotation):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.on_appear(name.strip().decode("utf-8"))
+  necrbot = smm.get_bot()
+  necrbot.set_rotation(rotation)
 
-def palad_mute(name, flag):
+def on_clan_message(name, message):
   smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.palad_mute(name, flag)
+  chatbot = smm.get_chat()
+  string = u"{0}: {1}".format(name, message)
+  chatbot.send(string)
 
-def clerbot_action():
-  smm = exported.get_manager("sowmud")
-  clerbot = smm.get_cler()
-  clerbot.action()
+quest = {}
+
+def on_ingr(mob, zone):
+  global quest
+  if zone in quest:
+    if mob not in quest[zone]:
+      quest[zone].append(mob)
+  else:
+    quest[zone] = [mob]
+
+def display_ingr():
+  global quest
+  for k, v in quest.items():
+    mobs = ", ".join(v)
+    exported.lyntin_command("gtell |{:^25}: {mobs}".format(k, mobs=mobs))
+  quest = {}

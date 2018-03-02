@@ -28,11 +28,14 @@ Note, if Lyntin's ansi is turned off, though, highlights won't happen.
 We might at some point want to highlight things with [[ ... ]] or 
 something like that when ansi is off.
 """
+from builtins import chr
+from builtins import range
+from builtins import object
 from lyntin import ansi, manager, utils, config, exported
 from lyntin.modules import modutils
 
 
-class HighlightData:
+class HighlightData(object):
   def __init__(self):
     self._highlights = {}
     self._currcolor = list(ansi.DEFAULT_COLOR)
@@ -71,7 +74,7 @@ class HighlightData:
     @return: list of (text, style)
     @rtype: list of (string, string)
     """
-    badhighlights = utils.expand_text(text, self._highlights.keys())
+    badhighlights = utils.expand_text(text, list(self._highlights.keys()))
 
     ret = []
     for mem in badhighlights:
@@ -87,7 +90,7 @@ class HighlightData:
     @return: the list of highlight keys--which is the highlight text
     @rtype: list of strings
     """
-    listing = self._highlights.keys()
+    listing = list(self._highlights.keys())
     listing.sort()
     return listing
 
@@ -106,7 +109,7 @@ class HighlightData:
     if text:
       faketext = ansi.filter_ansi(text)
       textlist = ansi.split_ansi_from_text(text)
-      hlist = self._highlights.keys()
+      hlist = list(self._highlights.keys())
       hlist.sort()
       for mem in hlist:
         miter = self._highlights[mem][2].finditer(faketext)
@@ -220,7 +223,7 @@ class HighlightData:
     @return: list of strings where each string represents a highlight
     @rtype: list of strings
     """
-    listing = self._highlights.keys()
+    listing = list(self._highlights.keys())
 
     if text:
       listing = utils.expand_text(text, listing)
@@ -241,7 +244,7 @@ class HighlightData:
 
   def getInfoMappings(self):
     l = []
-    for mem in self._highlights.keys():
+    for mem in list(self._highlights.keys()):
       l.append( { "style": self._highlights[mem][0],
                   "text": utils.escape(mem) } )
 
@@ -254,7 +257,7 @@ class HighlightData:
     @return: one liner describing this object
     @rtype: string
     """
-    return "%d highlight(s)." % len(self._highlights.keys())
+    return "%d highlight(s)." % len(list(self._highlights.keys()))
 
 
 class HighlightManager(manager.Manager):
@@ -263,26 +266,26 @@ class HighlightManager(manager.Manager):
     self._config = c
 
   def addHighlight(self, ses, style, text):
-    if not self._highlights.has_key(ses):
+    if ses not in self._highlights:
       self._highlights[ses] = HighlightData()
     self._highlights[ses].addHighlight(style, text)
 
   def clear(self, ses):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       self._highlights[ses].clear()
 
   def removeHighlights(self, ses, text):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       return self._highlights[ses].removeHighlights(text)
     return []
 
   def getHighlights(self, ses):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       return self._highlights[ses].getHighlights()
     return []
 
   def getInfo(self, ses, text="", colorize=0):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       return self._highlights[ses].getInfo(text, colorize)
     return []
 
@@ -300,25 +303,25 @@ class HighlightManager(manager.Manager):
     if item != "highlight":
       raise ValueError("%s is not a valid item for this manager." % item)
 
-    if not self._highlights.has_key(ses):
+    if ses not in self._highlights:
       return []
 
     return self._highlights[ses].getInfoMappings()
 
   def getStatus(self, ses):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       return self._highlights[ses].getStatus()
     return "0 highlight(s)."
 
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._highlights.has_key(basesession):
+      if basesession in self._highlights:
         hdata = self._highlights[basesession]
-        for mem in hdata._highlights.keys():
+        for mem in list(hdata._highlights.keys()):
           self.addHighlight(newsession, hdata._highlights[mem][0], mem)
 
   def removeSession(self, ses):
-    if self._highlights.has_key(ses):
+    if ses in self._highlights:
       del self._highlights[ses]
 
   def persist(self, args):
@@ -344,7 +347,7 @@ class HighlightManager(manager.Manager):
     if self._config.get("ansicolor") == 0:
       return ansi.filter_ansi(text)
     else:
-      if self._highlights.has_key(ses):
+      if ses in self._highlights:
         return self._highlights[ses].expand(text)
 
     return text
@@ -445,7 +448,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global hm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("highlight")
 
   exported.hook_unregister("mud_filter_hook", hm.mudfilter)

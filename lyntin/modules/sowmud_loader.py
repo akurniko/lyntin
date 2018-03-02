@@ -28,6 +28,18 @@ def bot_off_cmd(ses, args, input):
 
 commands_dict["botoff"] = (bot_off_cmd, "")
 
+def bot_status_cmd(ses, args, input):
+  """
+  Get the status of the bot
+
+  see also:
+  category: bot
+  """
+  smm = exported.get_manager("sowmud")
+  smm.status()
+
+commands_dict["botstatus"] = (bot_status_cmd, "")
+
 
 smm = None
 
@@ -45,7 +57,7 @@ def load():
 
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   mapper.unload()
   exported.remove_manager("sowmud")
 

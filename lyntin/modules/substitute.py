@@ -21,10 +21,11 @@
 """
 This module defines the SubstituteManager which handles substitutes.
 """
+from builtins import object
 from lyntin import ansi, manager, utils, exported
 from lyntin.modules import modutils
 
-class SubstituteData:
+class SubstituteData(object):
   def __init__(self):
     self._substitutes = {}
     self._antisubs = []
@@ -65,7 +66,7 @@ class SubstituteData:
     @returns: list of (item, substitute) tuples of removed substitutes
     @rtype: list of (string, string)
     """
-    badsubstitutes = utils.expand_text(text, self._substitutes.keys())
+    badsubstitutes = utils.expand_text(text, list(self._substitutes.keys()))
 
     ret = []
     for mem in badsubstitutes:
@@ -97,7 +98,7 @@ class SubstituteData:
     @returns: list of all the substitute items
     @rtype: list of strings
     """
-    listing = self._substitutes.keys()
+    listing = list(self._substitutes.keys())
     listing.sort()
     return listing
 
@@ -130,7 +131,7 @@ class SubstituteData:
           return text
 
       # check for subs
-      for mem in self._substitutes.keys():
+      for mem in list(self._substitutes.keys()):
         text = text.replace(mem, self._substitutes[mem])
 
     return text 
@@ -150,7 +151,7 @@ class SubstituteData:
     @return: list of strings where each string represents a substitute
     @rtype: list of strings
     """
-    listing = self._substitutes.keys()
+    listing = list(self._substitutes.keys())
     if text:
       listing = utils.expand_text(text, listing)
 
@@ -160,7 +161,7 @@ class SubstituteData:
 
   def getSubstituteInfoMapping(self):
     l = []
-    for mem in self._substitutes.keys():
+    for mem in list(self._substitutes.keys()):
       l.append( { "item": mem,
                   "substitution": utils.escape(self._substitutes[mem]) } )
     return l
@@ -200,7 +201,7 @@ class SubstituteData:
     @returns: string describing how many substitutes we're managing
     @rtype: string
     """
-    subs = len(self._substitutes.keys())
+    subs = len(list(self._substitutes.keys()))
     antisubs = len(self._antisubs)
 
     return "%d substitute(s).  %d antisub(s)." % (subs, antisubs)
@@ -211,36 +212,36 @@ class SubstituteManager(manager.Manager):
     self._subs = {}
 
   def addSubstitute(self, ses, item, sub):
-    if not self._subs.has_key(ses):
+    if ses not in self._subs:
       self._subs[ses] = SubstituteData()
     self._subs[ses].addSubstitute(item, sub)
 
   def addAntiSubstitute(self, ses, item):
-    if not self._subs.has_key(ses):
+    if ses not in self._subs:
       self._subs[ses] = SubstituteData()
     self._subs[ses].addAntiSubstitute(item)
 
   def clear(self, ses):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       self._subs[ses].clear()
 
   def removeSubstitutes(self, ses, text):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].removeSubstitutes(text)
     return []
 
   def removeAntiSubstitutes(self, ses, text):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].removeAntiSubstitutes(text)
     return []
 
   def getSubstitutes(self, ses):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].getSubstitutes()
     return []
 
   def getInfo(self, ses, text=''):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].getInfo(text)
     return []
 
@@ -261,7 +262,7 @@ class SubstituteManager(manager.Manager):
     if item not in ["substitute", "antisubstitute"]:
       raise ValueError("%s is not a valid item for this manager." % item)
     
-    if not self._subs.has_key(ses):
+    if ses not in self._subs:
       return []
 
     if item == "substitute":
@@ -270,28 +271,28 @@ class SubstituteManager(manager.Manager):
     return self._subs[ses].getAntiSubstituteInfoMapping()
 
   def getAntiSubstitutesInfo(self, ses, text=''):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].getAntiSubstitutesInfo(text)
     return []
 
   def getStatus(self, ses):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].getStatus()
     return "0 substitute(s). 0 antisub(s)."
 
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._subs.has_key(basesession):
+      if basesession in self._subs:
         sdata = self._subs[basesession]
-        for mem in sdata._substitutes.keys():
+        for mem in list(sdata._substitutes.keys()):
           self.addSubstitute(newsession, mem, sdata._substitutes[mem])
 
   def removeSession(self, ses):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       del self._subs[ses]
 
   def expand(self, ses, text):
-    if self._subs.has_key(ses):
+    if ses in self._subs:
       return self._subs[ses].expand(text)
     return text
 
@@ -425,7 +426,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global sm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("substitute")
 
   exported.hook_unregister("mud_filter_hook", sm.mudfilter)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from past.builtins import cmp
 from lyntin.modules.sowmud import mapper
 
 def test_room_cmp():

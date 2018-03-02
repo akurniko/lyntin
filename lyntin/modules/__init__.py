@@ -101,7 +101,7 @@ def load_modules():
       _module = __import__(name)
       _module = sys.modules[name]
 
-      if _module.__dict__.has_key("load"):
+      if "load" in _module.__dict__:
         _module.load()
 
       _module.__dict__["lyntin_import"] = 1
@@ -127,7 +127,7 @@ def load_modules():
 
         try:
           _module = __import__(mem2)
-          if _module.__dict__.has_key("load"):
+          if "load" in _module.__dict__:
             _module.load()
 
           test_for_conflicts(mem, _module)

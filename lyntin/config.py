@@ -40,6 +40,7 @@ X{config_change_hook}::
 
    newvalue - the new value of the config item
 """
+from builtins import object
 import types, copy
 from lyntin import exported, utils, manager, constants
 
@@ -55,7 +56,7 @@ options = {'datadir': '',
            'snoopdefault': 1,
            'ui': 'text'}
 
-class ConfigBase:
+class ConfigBase(object):
   """
   A ConfigDataBase subclass encapsulates a piece of configuration.  It
   encapsulates its type functionality (data checking, et al), its name
@@ -162,7 +163,7 @@ class StringConfig(ConfigBase):
   Holds a string.
   """
   def check(self, value):
-    if type(value) != types.StringType:
+    if type(value) != bytes:
       raise TypeError("Value is not of type string.")
     return value
 
@@ -174,7 +175,7 @@ class CharConfig(ConfigBase):
   Holds a single character.
   """
   def check(self, value):
-    if type(value) != types.StringType:
+    if type(value) != bytes:
       raise TypeError("Value is not of type string.")
 
     if len(value) != 1:
@@ -242,10 +243,10 @@ class ConfigManager(manager.Manager):
     @raises ValueError: if we already have an item in that session with
         that name.
     """
-    if not self._config.has_key(ses):
+    if ses not in self._config:
       self._config[ses] = {}
 
-    if self._config[ses].has_key(name):
+    if name in self._config[ses]:
       raise ValueError("Already have a config item of that name.")
 
     self._config[ses][name] = configitem
@@ -264,10 +265,10 @@ class ConfigManager(manager.Manager):
 
     @raises ValueError: if the item does not exist
     """
-    if not self._config.has_key(ses):
+    if ses not in self._config:
       raise ValueError("That session does not exist.")
 
-    if not self._config[ses].has_key(name):
+    if name not in self._config[ses]:
       raise ValueError("That item does not exist.")
 
     del self._config[ses][name]
@@ -288,10 +289,10 @@ class ConfigManager(manager.Manager):
     @param ses: the session (or None if this is not session-scoped)
     @type  ses: Session
     """
-    if not self._config.has_key(ses):
+    if ses not in self._config:
       raise ValueError("Session '%s' does not exist." % repr(ses))
 
-    if not self._config[ses].has_key(name):
+    if name not in self._config[ses]:
       raise ValueError("No config item of that name.")
 
     oldvalue = self._config[ses][name].set(newvalue)
@@ -313,13 +314,13 @@ class ConfigManager(manager.Manager):
         raise a ValueError.
     @type  defaultvalue: varies
     """
-    if not self._config.has_key(ses):
+    if ses not in self._config:
       if ses == None:
         self._config[None] = {}
       else:
         raise ValueError("Session '%s' does not exist." % repr(ses))
 
-    if not self._config[ses].has_key(name):
+    if name not in self._config[ses]:
       if defaultvalue == constants.NODEFAULTVALUE:
         raise ValueError("No config item of that name")
       else:
@@ -342,8 +343,8 @@ class ConfigManager(manager.Manager):
     @returns: list of ConfigBase subclass objects
     @rtype: list of ConfigBase subclass objects
     """
-    if self._config.has_key(ses):
-      return self._config[ses].values()
+    if ses in self._config:
+      return list(self._config[ses].values())
 
     return []
 
@@ -363,10 +364,10 @@ class ConfigManager(manager.Manager):
     @returns: a ConfigBase item or None if the item doesn't exist
     @rtype: ConfigBase
     """
-    if not self._config.has_key(ses):
+    if ses not in self._config:
       return None
 
-    if not self._config[ses].has_key(name):
+    if name not in self._config[ses]:
       return None
 
     return self._config[ses][name]
@@ -375,17 +376,17 @@ class ConfigManager(manager.Manager):
   def addSession(self, newsession, basesession):
     # if we have nothing to clone from, then we don't want to
     # worry about this
-    if not basesession or not self._config.has_key(basesession):
+    if not basesession or basesession not in self._config:
       return
 
     x = {}
 
-    for mem in self._config[basesession].values():
+    for mem in list(self._config[basesession].values()):
       x[mem._name] = copy.deepcopy(mem)
 
     self._config[newsession] = x
 
   def removeSession(self, ses):
-    if self._config.has_key(ses):
+    if ses in self._config:
       del self._config[ses]
 

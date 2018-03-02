@@ -28,6 +28,9 @@ do to display the mud data.  The exception to this is when the user has
 shut off mudansi using the #config command.  Then we'll whack any incoming
 ANSI color stuff before moving it around.
 """
+from builtins import str
+from builtins import chr
+from builtins import range
 import re
 
 # for finding ANSI color sequences
@@ -311,7 +314,7 @@ def get_color(style):
   markup = ""
   for mem in styles:
     mem = mem.strip()
-    if STYLEMAP.has_key(mem):
+    if mem in STYLEMAP:
       markup = markup + STYLEMAP[mem] + ";"
   return chr(27) + "[" + markup[:-1] + "m"
 

@@ -10,6 +10,12 @@
 This has a series of utility functions that aren't related to
 classes in the application, but are useful in a variety of places.
 """
+from __future__ import division
+from builtins import str
+from builtins import chr
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import string, re, time
 
 ANSI_COLOR_REGEXP = re.compile(chr(27) + '\[[0-9;]*[mJ]')
@@ -275,8 +281,8 @@ def columnize(textlist, screenwidth=72, indent=0):
   for mem in textlist:
     maxwidth = max(maxwidth, len(mem))
 
-  numcols = max(1, (screenwidth + SPACING) / (maxwidth + SPACING))
-  numrows = (len(textlist) + numcols - 1) / numcols
+  numcols = max(1, old_div((screenwidth + SPACING), (maxwidth + SPACING)))
+  numrows = old_div((len(textlist) + numcols - 1), numcols)
 
   rows = []
   ## We can't just do "rows = ([],) * rows" -- need distinct lists
@@ -290,7 +296,7 @@ def columnize(textlist, screenwidth=72, indent=0):
     rows[idx].append(mem)
     idx = (idx + 1) % numrows
 
-  rows = map(string.rstrip, map(string.join, rows))
+  rows = list(map(string.rstrip, list(map(string.join, rows))))
   return (indent * " ") + string.join(rows, "\n" + (indent * " "))
 
 # Local variables:

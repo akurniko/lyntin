@@ -9,6 +9,9 @@
 """
 Holds the text ui class.
 """
+from builtins import chr
+from builtins import input
+from builtins import range
 import re, sys, os, select, types
 from lyntin import ansi, engine, event, utils, exported, config
 from lyntin.ui import base, message
@@ -92,7 +95,7 @@ class Textui(base.BaseUI):
       self._onecho_attr = echonew[3]
       self._offecho_attr = echonew[3] & ~termios.ECHO
 
-    if config.options.has_key("readline"):
+    if "readline" in config.options:
       try:
         import readline
       except ImportError:
@@ -135,7 +138,7 @@ class Textui(base.BaseUI):
     try:
       termios.tcsetattr(fd, termios.TCSADRAIN, new)
       self._echo = 1
-    except Exception, e:
+    except Exception as e:
       exported.write_error("textui: unable to turn on echo: %s" % e)
 
   def turnoffecho(self):
@@ -149,7 +152,7 @@ class Textui(base.BaseUI):
     try:
       termios.tcsetattr(fd, termios.TCSADRAIN, new)
       self._echo = 0
-    except Exception, e:
+    except Exception as e:
       exported.write_error("textui: unable to turn off echo: %s" % e)
 
 
@@ -176,7 +179,7 @@ class Textui(base.BaseUI):
     use raw_input to grab user input.
     """
     try:
-      return raw_input()
+      return input()
     except EOFError:
       pass
 
@@ -222,7 +225,7 @@ class Textui(base.BaseUI):
             break
 
 
-    except select.error, e:
+    except select.error as e:
       (errno,name) = e
       if errno == 4:
         exported.write_message("system exit: select.error.")
@@ -245,7 +248,7 @@ class Textui(base.BaseUI):
     """
     msg = args["message"]
 
-    if (type(msg) == types.StringType) or (type(msg) == types.UnicodeType):
+    if (type(msg) == bytes) or (type(msg) == str):
       msg = message.Message(msg, message.LTDATA)
 
     line = msg.data
@@ -289,7 +292,7 @@ class Textui(base.BaseUI):
     # each session has a saved current color for mud data.  we grab
     # that current color--or user our default if we don't have one
     # for the session yet.
-    if self._currcolors.has_key(ses):
+    if ses in self._currcolors:
       color = self._currcolors[ses]
     else:
       # need a copy of the list and not a reference to the list itself.
@@ -299,7 +302,7 @@ class Textui(base.BaseUI):
     # some sessions have an unfinished color as well--in case we
     # got a part of an ansi color code in a mud message, and the other
     # part is in another message.
-    if self._unfinishedcolor.has_key(ses):
+    if ses in self._unfinishedcolor:
       leftover = self._unfinishedcolor[ses]
     else:
       leftover = ""

@@ -19,6 +19,8 @@
 # $Id: tintincmds.py,v 1.26 2007/07/24 00:39:03 willhelm Exp $
 #########################################################################
 
+from builtins import str
+from builtins import range
 import os, os.path
 from lyntin import net, utils, engine, constants, config, exported, event
 from lyntin.modules import modutils
@@ -54,7 +56,7 @@ def clear_cmd(ses, words, input):
   try:
     ses.clear()
     exported.write_message("clear: session %s cleared." % ses.getName(), ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_traceback("clear: error in clearing session %s" % ses)
 
 commands_dict["clear"] = (clear_cmd, "")
@@ -200,7 +202,7 @@ def if_cmd(ses, args, input):
       exported.lyntin_command(elseaction, 1, ses)
   except SyntaxError:
     exported.write_error("if: invalid syntax / syntax error.", ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_error("if: exception: %s" % e, ses)
 
 commands_dict["if"] = (if_cmd, "expr action elseaction=")
@@ -299,7 +301,7 @@ def loop_cmd(ses, args, input):
     else:
       ito = ito - step
 
-    loopitems = range(ifrom, ito, step)
+    loopitems = list(range(ifrom, ito, step))
     loopitems = [repr(m) for m in loopitems]
     # for i in range(ifrom, ito, step):
     #   loopcommand = command.replace("%0", repr(i))
@@ -334,7 +336,7 @@ def math_cmd(ses, args, input):
       varman.addVariable(ses,var, str(rvalue))
     if not quiet:
       exported.write_message("math: %s = %s = %s." % (var, ops, str(rvalue)), ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_error("math: exception: %s\n%s" % (ops, e), ses)
 
 commands_dict["math"] = (math_cmd, "var operation quiet:boolean=false")
@@ -394,10 +396,10 @@ def read_cmd(ses, args, input):
     if filename.startswith("http://"):
       contents = utils.http_get(filename).split("\n")
     else:
-      f = open(filename, "r")
+      f = open(filename, "rb")
       contents = f.readlines()
       f.close()
-  except Exception, e:
+  except Exception as e:
     exported.write_error("read: file %s cannot be opened.\n%s" % (filename, e), ses)
     return
 
@@ -604,7 +606,7 @@ def textin_cmd(ses, args, input):
 
   except IOError:
     exported.write_error("textin: file %s is not readable." % filename, ses)
-  except Exception, e:
+  except Exception as e:
     exported.write_error("textin: exception thrown %s." % e, ses)
 
 commands_dict["textin"] = (textin_cmd, "file")
@@ -701,7 +703,7 @@ def load():
 
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
 
 # Local variables:
 # mode:python

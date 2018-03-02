@@ -12,11 +12,18 @@ This new test-server is a patchwork of stuff from the existing test server
 and code I wrote for the Varium mud server way back when.  It is actually
 a functional mini-mud now.
 """
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 import string, testserver, toolsutils
-from toolsutils import color
+from .toolsutils import color
 
 
-class Connection:
+class Connection(object):
   def __init__(self, world, newsock, newaddr=''):
     self._world = world
     self._sock = newsock

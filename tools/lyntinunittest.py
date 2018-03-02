@@ -11,7 +11,9 @@ This module uses the Python unittest framework to unittest various
 pieces inside of Lyntin--mostly stuff that's standalone in the 
 lyntin.utils module.
 """
+from __future__ import print_function
 # we kind of assume this is being run in ./lyntin40/tools/
+from builtins import range
 import sys, unittest
 sys.path.insert(0, "../")
 
@@ -32,7 +34,7 @@ class TestSplitCommands(unittest.TestCase):
     """Tests lyntin.utils.split_commands"""
     for i in range(0, len(self.t)):
       c, s = self.t[i]
-      result = lyntin.utils.split_commands(c)
+      result = lyntin.utils.split_commands(";", c)
       self.assertEquals(s, result, "test %d" % i)
 
 class TestSplitAnsiFromText(unittest.TestCase):
@@ -181,7 +183,7 @@ _pass_fail("parse_time 4", int(parse_time("1:17:34a")), 1029824254)
 
 if __name__ == '__main__':
   from lyntin import constants
-  print constants.VERSION
+  print(constants.VERSION)
 
   unittest.main(testRunner=unittest.TextTestRunner(verbosity=2))
 

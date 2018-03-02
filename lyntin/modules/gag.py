@@ -21,11 +21,12 @@
 """
 This module defines gag functionality.
 """
+from builtins import object
 import string
 from lyntin import ansi, manager, utils, exported
 from lyntin.modules import modutils
 
-class GagData:
+class GagData(object):
   def __init__(self):
     self._gags = {}
     self._antigags = {}
@@ -65,7 +66,7 @@ class GagData:
     @returns: list of (item, gag) tuples of removed gags
     @rtype: list of (string, string)
     """
-    badgags = utils.expand_text(text, self._gags.keys())
+    badgags = utils.expand_text(text, list(self._gags.keys()))
 
     ret = []
     for mem in badgags:
@@ -81,7 +82,7 @@ class GagData:
     @returns: a list of antigags that were removed.
     @rtype: list of strings
     """
-    badgags = utils.expand_text(text, self._antigags.keys())
+    badgags = utils.expand_text(text, list(self._antigags.keys()))
 
     ret = []
     for mem in badgags:
@@ -97,7 +98,7 @@ class GagData:
     @returns: list of all antigags
     @rtype: list of strings
     """
-    listing = self._antigags.keys()
+    listing = list(self._antigags.keys())
     listing.sort()
     return listing
 
@@ -115,12 +116,12 @@ class GagData:
     """
     if len(text) > 0:
       # check for antigags first
-      for mem in self._antigags.values():
+      for mem in list(self._antigags.values()):
         if mem.search(ansi.filter_ansi(text)):
           return text
 
       # check for gags
-      for mem in self._gags.values():
+      for mem in list(self._gags.values()):
         if mem.search(ansi.filter_ansi(text)):
           tokens = ansi.split_ansi_from_text(text)
           tokens = [m for m in tokens if ansi.is_color_token(m)]
@@ -143,7 +144,7 @@ class GagData:
     @return: list of strings where each string represents a gag
     @rtype: list of strings
     """
-    data = self._gags.keys()
+    data = list(self._gags.keys())
     if text:
       data = utils.expand_text(text, data)
 
@@ -153,7 +154,7 @@ class GagData:
 
   def getGagInfoMappings(self):
     l = []
-    for mem in self._gags.keys():
+    for mem in list(self._gags.keys()):
       l.append( {"text": mem} )
 
     return l
@@ -172,7 +173,7 @@ class GagData:
     @return: list of strings where each string represents a gag
     @rtype: list of strings
     """
-    data = self._antigags.keys()
+    data = list(self._antigags.keys())
     if text:
       data = utils.expand_text(text, data)
 
@@ -182,7 +183,7 @@ class GagData:
 
   def getAntiGagInfoMappings(self):
     l = []
-    for mem in self._antigags.keys():
+    for mem in list(self._antigags.keys()):
       l.append( { "item": mem } )
 
     return l
@@ -194,8 +195,8 @@ class GagData:
     @returns: string describing how many gags and gags we're managing
     @rtype: string
     """
-    gags = len(self._gags.keys())
-    antigags = len(self._antigags.keys())
+    gags = len(list(self._gags.keys()))
+    antigags = len(list(self._antigags.keys()))
 
     return "%d gag(s). %d antigag(s)" % (gags, antigags)
 
@@ -205,12 +206,12 @@ class GagManager(manager.Manager):
     self._gagdata = {}
 
   def getGagData(self, ses):
-    if not self._gagdata.has_key(ses):
+    if ses not in self._gagdata:
       self._gagdata[ses] = GagData()
     return self._gagdata[ses]
     
   def clear(self, ses):
-    if self._gagdata.has_key(ses):
+    if ses in self._gagdata:
       self._gagdata[ses].clear()
 
   def getInfo(self, ses, text=''):
@@ -232,7 +233,7 @@ class GagManager(manager.Manager):
     if item not in ["gag", "antigag"]:
       raise ValueError("%s is not a valid item for this manager." % item)
 
-    if not self._gagdata.has_key(ses):
+    if ses not in self._gagdata:
       return []
 
     if item == "gag":
@@ -245,17 +246,17 @@ class GagManager(manager.Manager):
 
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._gagdata.has_key(basesession):
+      if basesession in self._gagdata:
         bdata = self.getGagData(basesession)
         ndata = self.getGagData(newsession)
 
-        for mem in bdata._gags.keys():
+        for mem in list(bdata._gags.keys()):
           ndata.addGag(mem)
-        for mem in bdata._antigags.keys():
+        for mem in list(bdata._antigags.keys()):
           ndaga.addAntiGag(mem)
 
   def removeSession(self, ses):
-    if self._gagdata.has_key(ses):
+    if ses in self._gagdata:
       del self._gagdata[ses]
 
   def persist(self, args):
@@ -281,7 +282,7 @@ class GagManager(manager.Manager):
     ses = args["session"]
     text = args["dataadj"]
 
-    if exported.get_config("ignoresubs", ses, 0) == 0 and self._gagdata.has_key(ses):
+    if exported.get_config("ignoresubs", ses, 0) == 0 and ses in self._gagdata:
       text = self._gagdata[ses].expand(text)
     return text
 
@@ -411,7 +412,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global gm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("gag")
 
   exported.hook_unregister("mud_filter_hook", gm.mudfilter)

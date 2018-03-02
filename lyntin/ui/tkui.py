@@ -10,17 +10,25 @@
 This is a tk oriented user interface for lyntin.  Based on
 Lyntin, but largely re-coded in various areas.
 """
+from __future__ import print_function
+from __future__ import division
 
-from Tkinter import *
-from ScrolledText import ScrolledText
-import os, tkFont, types, Queue
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
+from tkinter import *
+from tkinter.scrolledtext import ScrolledText
+import os, tkinter.font, types, queue
 import locale
 import sys
 from lyntin import ansi, event, engine, exported, utils, constants, config
 from lyntin.ui import base, message
 
 
-if locale.__dict__.has_key('getpreferredencoding'):
+if 'getpreferredencoding' in locale.__dict__:
   UNICODE_ENCODING = locale.getpreferredencoding() # python2.3 and later
 else:  
   UNICODE_ENCODING = locale.getlocale()[1]
@@ -135,7 +143,7 @@ def get_ui_instance():
     myui = Tkui()
   return myui
 
-class _Event:
+class _Event(object):
   def __init__(self):
     pass
 
@@ -178,7 +186,7 @@ class Tkui(base.BaseUI):
     base.BaseUI.__init__(self)
 
     # internal ui queue
-    self._event_queue = Queue.Queue()
+    self._event_queue = queue.Queue()
 
     # map of session -> (bold, foreground, background)
     self._currcolors = {}
@@ -198,7 +206,7 @@ class Tkui(base.BaseUI):
 
     self.settitle()
 
-    fnt = tkFont.Font(family="FixedSys", size=10)
+    fnt = tkinter.font.Font(family="FixedSys", size=10)
 
     self._entry = CommandEntry(self._tk, self, fg='white', bg='black',
                                insertbackground='yellow', font=fnt, 
@@ -287,7 +295,7 @@ class Tkui(base.BaseUI):
     @param windowname: the name of the window to write to
     @type  windowname: string
     """
-    if self._windows.has_key(windowname):
+    if windowname in self._windows:
       del self._windows[windowname]
 
   def writeWindow(self, windowname, message):
@@ -305,7 +313,7 @@ class Tkui(base.BaseUI):
     self._event_queue.put(_WriteWindowEvent(windowname, message))
 
   def writeWindow_internal(self, windowname, message):
-    if not self._windows.has_key(windowname):
+    if windowname not in self._windows:
       self._windows[windowname] = NamedWindow(windowname, self, self._tk)
     self._windows[windowname].write(message)
      
@@ -421,7 +429,7 @@ class Tkui(base.BaseUI):
 
   def write_internal(self, args):
     mess = args["message"]
-    if type(mess) == types.StringType:
+    if type(mess) == bytes:
       mess = message.Message(mess, message.LTDATA)
     elif "window" in mess.hints:
       self.writeWindow_internal(mess.hints["window"], mess)
@@ -464,19 +472,19 @@ class Tkui(base.BaseUI):
       return name
 
     rgb = self._tk._getints(self._tk.tk.call('winfo', 'rgb', self._txt, name))
-    rgb = "#%02x%02x%02x" % (rgb[0]/256, rgb[1]/256, rgb[2]/256) 
-    print name, "converted to: ", rgb
+    rgb = "#%02x%02x%02x" % (old_div(rgb[0],256), old_div(rgb[1],256), old_div(rgb[2],256)) 
+    print(name, "converted to: ", rgb)
 
     return rgb
 
   def _initColorTags(self):
     """ Sets up Tk tags for the text widget (fg/bg/u)."""
-    for ck in fg_color_codes.keys():
+    for ck in list(fg_color_codes.keys()):
       color = self.convertColor(fg_color_codes[ck])
       self._txt.tag_config(ck, foreground=color)
       self._txtbuffer.tag_config(ck, foreground=color)
 
-    for ck in bg_color_codes.keys():
+    for ck in list(bg_color_codes.keys()):
       self._txt.tag_config(ck, background=bg_color_codes[ck])
       self._txtbuffer.tag_config(ck, background=bg_color_codes[ck])
 
@@ -790,7 +798,7 @@ class CommandEntry(Entry):
       self.delete(0, 'end')
       self.insert(0, _decode(hist[self.hist_index]))
 
-class NamedWindow:
+class NamedWindow(object):
   """
   This creates a window for the Tkui which you can then write to 
   programmatically.  This allows modules to spin off new named windows
@@ -827,7 +835,7 @@ class NamedWindow:
       fontname = "Courier"
     else:
       fontname = "Fixedsys"
-    fnt = tkFont.Font(family=fontname, size=12)
+    fnt = tkinter.font.Font(family=fontname, size=12)
     
     self._txt = ScrolledText(self._tk, fg="white", bg="black", 
                              font=fnt, height=20)
@@ -858,18 +866,18 @@ class NamedWindow:
       return name
 
     rgb = self._tk._getints(self._tk.tk.call('winfo', 'rgb', self._txt, name))
-    rgb = "#%02x%02x%02x" % (rgb[0]/256, rgb[1]/256, rgb[2]/256) 
-    print name, "converted to: ", rgb
+    rgb = "#%02x%02x%02x" % (old_div(rgb[0],256), old_div(rgb[1],256), old_div(rgb[2],256)) 
+    print(name, "converted to: ", rgb)
 
     return rgb
 
   def _initColorTags(self):
     """ Sets up Tk tags for the text widget (fg/bg)."""
-    for ck in fg_color_codes.keys():
+    for ck in list(fg_color_codes.keys()):
       color = self.convertColor(fg_color_codes[ck])
       self._txt.tag_config(ck, foreground=color)
 
-    for ck in bg_color_codes.keys():
+    for ck in list(bg_color_codes.keys()):
       self._txt.tag_config(ck, background=bg_color_codes[ck])
 
     self._txt.tag_config("u", underline=1)
@@ -910,10 +918,10 @@ class NamedWindow:
 
     This is overridden from the 'base.BaseUI'.
     """
-    if type(msg) == types.TupleType:
+    if type(msg) == tuple:
       msg = msg[0]
 
-    if type(msg) == types.StringType:
+    if type(msg) == bytes:
       msg = message.Message(msg, message.LTDATA)
 
     line = msg.data
@@ -933,7 +941,7 @@ class NamedWindow:
     self._yadjust()
 
  
-class Autotyper:
+class Autotyper(object):
   """
   Autotyper class, it generates the autotyper window, waits for entering text
   and then calls a function to work with the text.
@@ -961,7 +969,7 @@ class Autotyper:
       fontname = "Courier"
     else:
       fontname = "Fixedsys"
-    fnt = tkFont.Font(family=fontname, size=12)
+    fnt = tkinter.font.Font(family=fontname, size=12)
     
     self._txt = ScrolledText(self._frame, fg="white", bg="black", 
                              font=fnt, height=20)
@@ -1134,7 +1142,7 @@ def fix_unicode(text):
   """
   Unicode to standard string translation--fixes unicode bug.
   """
-  if type(text) == unicode:
+  if type(text) == str:
     return text.encode(UNICODE_ENCODING)
   else:
     return text

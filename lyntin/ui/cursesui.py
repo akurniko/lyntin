@@ -8,18 +8,29 @@
 """
 This is curses based ui module for Lyntin.
 """
+from __future__ import division
 
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
+from builtins import filter
+from builtins import chr
+from builtins import range
+from past.utils import old_div
+from builtins import object
 __author__ = "glasssnake <glassnake@ok.ru>"
 __version__ = "0.5"
 __license__ = "GPLv3"
 
 
-import sys, types, string, thread, select, os, locale
+import sys, types, string, _thread, select, os
 from time import time
 from lyntin import ansi, event, utils, exported, config, modules
 from lyntin.ui import base, message
-import curses, curses.wrapper
-from curses import ascii
+import curses
+import locale
+import unicodedata
+from curses import ascii,wrapper
 
 HELP_TEXT = """
 Cursesui - the curses user interface for Lyntin.
@@ -125,7 +136,7 @@ def curses_bind_cmd(ses, args, input):
     else:
       exported.write_message("Nothing is bound to "+key)
   else:
-    data = bindings.values()
+    data = list(bindings.values())
     if data:
       exported.write_message("Current bindings:")
       data.sort( lambda x, y: cmp(x[0], y[0]) )
@@ -145,7 +156,7 @@ def curses_unbind_cmd(ses, args, input):
     key = keyarg
   else:
     key = keyarg.replace("<ESC>", "\x1b").replace("<CR>", "\n")
-  for (sequence, tuple) in bindings.items():
+  for (sequence, tuple) in list(bindings.items()):
     if key == tuple[0]:
       del bindings[sequence]
       if not args["quiet"]:
@@ -170,7 +181,7 @@ def startup_hook(args):
 #
 def bindings_persist(args):
   quiet = args["quiet"]
-  values = bindings.values()
+  values = list(bindings.values())
   values.sort( lambda x, y: cmp(x[0], y[0]) )
   data = []
   for (seq, responce) in values:
@@ -186,7 +197,11 @@ def bindings_persist(args):
 # is broken (not locale-aware).
 # 
 def is_a_char(ch):
-  return (ascii.isprint(ord(ch)) or ch in string.letters)
+  try:
+    return unicodedata.category(ch)[0] in "LNZPS"
+  except TypeError:
+    return False
+  #return ascii.isprint(ord(ch))
 
 
 #
@@ -230,12 +245,12 @@ color_lookup = {
 class ColorConfig(config.StringConfig):
   def check(self, value):
     config.StringConfig.check(self, value)
-    if not value in color_lookup.keys():
-      raise TypeError("Value is not in set: " + "|".join(color_lookup.keys()))
+    if not value in list(color_lookup.keys()):
+      raise TypeError("Value is not in set: " + "|".join(list(color_lookup.keys())))
     return value
     
   def toString(self):
-    return "".join((repr(self._value), " (", "|".join(color_lookup.keys()), ")"))
+    return "".join((repr(self._value), " (", "|".join(list(color_lookup.keys())), ")"))
  
 
 _config_items = (
@@ -261,7 +276,7 @@ def get_ui_instance():
 # 
 # Window-like object that can "scroll"
 #
-class scroller:
+class scroller(object):
   def __init__(self, window, lines):
     self.window_ = window
     self.lines_ = lines
@@ -295,12 +310,13 @@ class scroller:
         self.window_.deleteln()
 
       for (line, attr) in lineattrs:
-        line = filter(is_a_char, line)
+        line = list(filter(is_a_char, line))
         rest = self.w_-current_x-1
         current_len = len(line)
         offset = 0
         while current_len >= rest:
-          self.window_.addnstr(current_y, current_x, line[offset:], rest, attr)
+          window_string = ''.join(line[offset:])
+          self.window_.addnstr(current_y, current_x, window_string, rest, attr)
           current_x = 0
           current_y += 1
           if current_y >= self.h_:
@@ -311,7 +327,15 @@ class scroller:
           current_len -= rest
           rest = self.w_-1
         if current_len:  
-          self.window_.addstr(current_y, current_x, line[offset:], attr)
+          try:
+              window_string = ''.join(line[offset:])
+              self.window_.addstr(current_y, current_x, window_string, attr)
+          except Exception as e:
+              print("Exception " + str(e))
+              print("{0} {1} {2}".format(type(line), type(line[offset:]), type(attr)))
+              print(line)
+              print(offset)
+              print(line[offset:])
           current_x += current_len    
       current_y += 1
 
@@ -320,7 +344,7 @@ class scroller:
     return self.startline_
       
 
-class inputbox:
+class inputbox(object):
 
   def __init__(self, ui, win, string=""):
     self.string_ = string
@@ -374,10 +398,11 @@ class inputbox:
     self.window_.move(0, self.curx_-self.offset_)
 
   def do_command(self, ch):
+    #print("character " + str(ch))
     if ch == -1:
       pass
-    if (ch & ~0xFF)==0:
-      self.string_ = self.string_[:self.curx_]+chr(ch)+self.string_[self.curx_:]
+    if is_a_char(ch): #(ch & ~0xFF)==0 and (ascii.isprint(ch)):
+      self.string_ = self.string_[:self.curx_]+ch+self.string_[self.curx_:]
       self.curx_ += 1
       self._align(1)
       self._reset()
@@ -420,8 +445,7 @@ class inputbox:
       # search the history back
       #
       if not self.history_:
-        self.history_ = filter( lambda x: x.find(self.string_) != -1,
-                                exported.get_history(1000) )
+        self.history_ = [x for x in exported.get_history(1000) if x.find(self.string_) != -1]
       if self.history_:
         found = self.history_[0]
         self.history_[0:1] = []
@@ -465,7 +489,8 @@ class Cursesui(base.BaseUI):
   # 
   def __init__(self):
     base.BaseUI.__init__(self)
-    
+
+    locale.setlocale(locale.LC_ALL, "")
     exported.hook_register("startup_hook", startup_hook)
     exported.hook_register("to_user_hook", self.write)
     exported.hook_register("config_change_hook", self.config_changed)
@@ -541,11 +566,11 @@ class Cursesui(base.BaseUI):
     if llen > 0:
       lines[0:llen] = []
       self.prompt_index_ -= llen
-    os.write(self.output_[1], '0') 
+    os.write(self.output_[1], '0'.encode("utf-8"))
       
     
   def _decode_colors(self, ses, default_attr, line, pretext=[]):
-    if self.unfinished_.has_key(ses):
+    if ses in self.unfinished_:
       (currentcolor, leftover) = self.unfinished_[ses]
     else:
       currentcolor = list(ansi.DEFAULT_COLOR)
@@ -609,7 +634,7 @@ class Cursesui(base.BaseUI):
     """
     msg = args["message"]
   
-    if type(msg) == types.StringType:
+    if type(msg) == bytes:
       msg = message.Message(msg, message.LTDATA)
     elif msg.type == message.USERDATA:
       return
@@ -659,8 +684,8 @@ class Cursesui(base.BaseUI):
     
       if curses.has_colors():
         curses.start_color()
-        for i in xrange(1,64):
-          curses.init_pair(i, i%8, i/8)
+        for i in range(1,64):
+          curses.init_pair(i, i%8, old_div(i,8))
       curses.raw()
       curses.noecho()
       curses.nonl()
@@ -693,7 +718,6 @@ class Cursesui(base.BaseUI):
         # set output windows:
         #
         if not out:
-          locale.setlocale(locale.LC_ALL,"")
           stdscr = curses.initscr()
           (screen_h, screen_w) = stdscr.getmaxyx()
           win = curses.newwin(1, screen_w, screen_h-1, 0)
@@ -704,7 +728,7 @@ class Cursesui(base.BaseUI):
           if not scrollback:
             out = scroller(curses.newwin(screen_h-1, screen_w, 0, 0), lines)
           else:
-            scroll_h = screen_h/3*2
+            scroll_h = int(screen_h/3*2)
             out_h = (screen_h - 2) - scroll_h 
             scrollback = scroller(curses.newwin(scroll_h, screen_w, 0, 0),
                                   lines[:])
@@ -721,7 +745,10 @@ class Cursesui(base.BaseUI):
         if keyboard_buffer and not hotkey_buffer:
           ch = keyboard_buffer.pop()
         else: 
-          ch = win.getch()
+          try:
+            ch = win.get_wch()
+          except:
+            ch = curses.ERR
           if ch == curses.ERR:
           
             # drop the hotkey buffer when the keyboard goes idle
@@ -743,7 +770,7 @@ class Cursesui(base.BaseUI):
             else:    
               
               if keyboard_fd in i:
-                ch = win.getch()
+                ch = win.get_wch()
  
               if output_pipe_fd in i:  
                 line=os.read(output_pipe_fd, 1024)
@@ -763,6 +790,9 @@ class Cursesui(base.BaseUI):
                 continue
 
           keyboard_buffer.insert(0, ch)
+          #print("character " + ch + str(ord(ch)))
+          if type(ch) == str:
+            ch = ord(ch)
           if ch < 256:
             keycodename = chr(ch)
             hotkey_buffer += keycodename
@@ -779,7 +809,7 @@ class Cursesui(base.BaseUI):
               keyboard_buffer = []
               self.handleinput(binding[1], internal=1)
               continue
-            elif not filter(lambda x: x.startswith(hotkey_buffer), bindings.keys()):
+            elif not [x for x in list(bindings.keys()) if x.startswith(hotkey_buffer)]:
               hotkey_buffer = ''
             continue
           else:
@@ -799,11 +829,11 @@ class Cursesui(base.BaseUI):
             scrollback = 1 # create scrollback window at next iteration
             out = None
           else: 
-            scrollback.redraw( scroll = -(scroll_h/2+1) )
+            scrollback.redraw( scroll = -(old_div(scroll_h,2)+1) )
           continue
         if ch == curses.KEY_NPAGE:
           if scrollback:
-            scrollback.redraw( scroll = scroll_h/2+1 )
+            scrollback.redraw( scroll = old_div(scroll_h,2)+1 )
           continue
 
         if ch == curses.ascii.ESC and scrollback:
@@ -811,7 +841,9 @@ class Cursesui(base.BaseUI):
           out = None
           continue
 
-        ch = edit.do_command(ch)    
+        ch = edit.do_command(ch)
+        if type(ch) == str:
+          ch = ord(ch)
 
         if ch in (curses.ascii.CR, curses.ascii.LF):
           edit_string = edit.get_string()

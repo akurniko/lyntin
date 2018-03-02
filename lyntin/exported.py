@@ -47,6 +47,8 @@ X{write_hook}::
    quiet - whether (1) or not (0) to append an argument that causes
            the command to quell input when it is later read in
 """
+from __future__ import print_function
+from builtins import str
 import sys, traceback
 from lyntin import utils, constants
 from lyntin.ui import message
@@ -427,7 +429,7 @@ def get_active_sessions():
   @return: the list of active sessions
   @rtype: list of session.Session's
   """
-  return myengine._sessions.values()
+  return list(myengine._sessions.values())
 
 def get_current_session():
   """
@@ -479,7 +481,7 @@ def write_ui(text):
   if myengine:
     myengine.writeUI(text)
   else:
-    print text
+    print(text)
 
 def write_message(text, ses=None, **hints):
   """
@@ -496,7 +498,7 @@ def write_message(text, ses=None, **hints):
   if myengine:
     myengine.writeUI(message.Message(text + "\n", message.LTDATA, ses, **hints))
   else:
-    print "message:", text
+    print("message:", text)
 
 def write_error(text, ses=None):
   """
@@ -513,7 +515,7 @@ def write_error(text, ses=None):
   if myengine:
     myengine.writeUI(message.Message(text + "\n", message.ERROR, ses))
   else:
-    print "error:", text
+    print("error:", text)
 
 def write_user_data(text, ses=None):
   """
@@ -526,11 +528,11 @@ def write_user_data(text, ses=None):
   @param ses: the session instance the user data is associated with
   @type  ses: session.Session
   """
-  text = str(text)
+  #text = str(text)
   if myengine:
     myengine.writeUI(message.Message(text + "\n", message.USERDATA, ses))
   else:
-    print "userdata:", text
+    print("userdata:", text)
 
 def write_mud_data(text, ses=None):
   """
@@ -546,7 +548,7 @@ def write_mud_data(text, ses=None):
   if myengine:
     myengine.writeUI(message.Message(text, message.MUDDATA, ses))
   else:
-    print "muddata:", text
+    print("muddata:", text)
 
 def write_traceback(message="", ses=None):
   """
@@ -629,7 +631,7 @@ def hook_unregister(hookname, func):
   @param func: the function to remove from the hook
   @type  func: function
   """
-  if myengine._hooks.has_key(hookname):
+  if hookname in myengine._hooks:
     myengine._hooks[hookname].remove(func)
 
 def hook_spam(hookname, argmap={}, mappingfunc=lambda x,y:x, 
@@ -670,9 +672,9 @@ def hook_spam(hookname, argmap={}, mappingfunc=lambda x,y:x,
         argmap = mappingfunc(argmap, output)
     else:
       argmap = emptyfunc(argmap)
-  except StopSpammingException, e:
+  except StopSpammingException as e:
     return None
-  except DoneSpammingException, d:
+  except DoneSpammingException as d:
     return d.output
 
   return donefunc(argmap)

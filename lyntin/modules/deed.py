@@ -30,11 +30,12 @@ or in the midst of copious battle spam.
 
 # deed code originally written by Sebastian John.
 
+from builtins import object
 import string
 from lyntin import manager, utils, exported
 from lyntin.modules import modutils
 
-class DeedData:
+class DeedData(object):
   def __init__(self):
     self._deeds = []
   
@@ -91,12 +92,12 @@ class DeedManager(manager.Manager):
     self._deeds = {}
 
   def getDeedData(self, ses):
-    if not self._deeds.has_key(ses):
+    if ses not in self._deeds:
       self._deeds[ses] = DeedData()
     return self._deeds[ses]
 
   def clear(self, ses):
-    if self._deeds.has_key(ses):
+    if ses in self._deeds:
       self._deeds[ses].clear()
 
   def getInfo(self, ses, num=""):
@@ -170,7 +171,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global dm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("deed")
 
 # Local variables:

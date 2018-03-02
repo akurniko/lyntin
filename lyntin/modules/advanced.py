@@ -25,8 +25,10 @@ module exists, it executes it in this module.
 
 It also holds load_cmd which does a lot of other magic stuff.
 """
+from future import standard_library
+standard_library.install_aliases()
 import sys
-import StringIO
+import io
 from code import compile_command
 from lyntin import exported, config
 
@@ -50,7 +52,7 @@ def _get_user_module():
   # this probably isn't exactly right since it'll look for the
   # first "lyntinuser" it finds and use that one.  i'm not sure how
   # we could implement a priority.
-  for mem in sys.modules.keys():
+  for mem in list(sys.modules.keys()):
     modname = "lyntinuser"
     if mem == modname or mem.endswith("." + modname):
       return sys.modules[mem]
@@ -106,15 +108,15 @@ def python_cmd(ses, words, input):
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     old_stdin = sys.stdin
-    sys_stdout = StringIO.StringIO()
-    sys_stderr = StringIO.StringIO()
-    sys_stdin = StringIO.StringIO()
+    sys_stdout = io.StringIO()
+    sys_stderr = io.StringIO()
+    sys_stdin = io.StringIO()
     try:
       sys.stdout = sys_stdout
       sys.stderr = sys_stderr
       sys.stdin = sys_stdin
       
-      exec compiled in dictglobals, execdictlocals
+      exec(compiled, dictglobals, execdictlocals)
 
     finally:
       sys.stdout = old_stdout
@@ -171,12 +173,12 @@ def load_cmd(ses, args, input):
   reload = args["reload"]
 
   # if this module has previously been loaded, we try to reload it.
-  if sys.modules.has_key(mod):
+  if mod in sys.modules:
 
     _module = sys.modules[mod]
     _oldmodule = _module
     try:
-      if _module.__dict__.has_key("lyntin_import"):
+      if "lyntin_import" in _module.__dict__:
         # if we're told not to reload it, we toss up a message and then
         # do nothing
         if not reload:
@@ -185,7 +187,7 @@ def load_cmd(ses, args, input):
 
         # if we loaded it via a lyntin_import mechanism and it has an
         # unload method, then we try calling that
-        if _module.__dict__.has_key("unload"):
+        if "unload" in _module.__dict__:
           try:
             _module.unload()
           except:
@@ -205,13 +207,13 @@ def load_cmd(ses, args, input):
     _module = __import__( mod )
     _module = sys.modules[mod]
 
-    if (_oldmodule and _oldmodule.__dict__.has_key("reload")):
+    if (_oldmodule and "reload" in _oldmodule.__dict__):
       try:
         _oldmodule.reload()
       except:
         exported.write_traceback("load: had problems calling reload on %s." % mod)
     
-    if (_module.__dict__.has_key("load")):
+    if ("load" in _module.__dict__):
       _module.load()
 
     _module.__dict__["lyntin_import"] = 1
@@ -235,11 +237,11 @@ def unload_cmd(ses, args, input):
   """
   mod = args["modulename"]
 
-  if sys.modules.has_key(mod):
+  if mod in sys.modules:
     _module = sys.modules[mod]
 
-    if _module.__dict__.has_key("lyntin_import"):
-      if _module.__dict__.has_key("unload"):
+    if "lyntin_import" in _module.__dict__:
+      if "unload" in _module.__dict__:
         try:
           _module.unload()
         except:

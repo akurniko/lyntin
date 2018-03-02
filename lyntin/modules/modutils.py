@@ -25,6 +25,7 @@ an API module and the contents herein are subject to change if we
 need to change them.  Having said that, I will note it doesn't change
 much.
 """
+from builtins import map
 import types
 from lyntin import exported
 
@@ -42,9 +43,9 @@ def load_commands(commands_dict):
       arguments we need to call exported.add_command repeatedly
   @type  commands_dict: dict
   """
-  for mem in commands_dict.keys(): 
+  for mem in list(commands_dict.keys()): 
     args = commands_dict[mem]
-    if type(args) == types.TupleType:
+    if type(args) == tuple:
       exported.add_command(*((mem,)+args))
     else:
       exported.add_command(mem, args)
@@ -102,7 +103,7 @@ def unsomething_helper(args, func, ses=None, sing="", plur=""):
     else:
       data = []
       for mem in removedthings:
-        if type(mem) == types.TupleType or type(mem) == types.ListType:
+        if type(mem) == tuple or type(mem) == list:
           mem = "{%s}" % ("} {".join(map(str, mem)))
           data.append("un%s: %s removed." % (sing, mem))
         else:

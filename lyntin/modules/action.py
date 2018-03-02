@@ -41,6 +41,10 @@ The compiled regular expressions gets recompiled every time a variable
 changes--this allows us to handle Lyntin variables in the action trigger
 statements.
 """
+from past.builtins import cmp
+from builtins import str
+from builtins import range
+from builtins import object
 import re
 from lyntin import manager, utils, event, exported, ansi
 from lyntin.modules import modutils
@@ -49,7 +53,7 @@ from lyntin.modules import modutils
 # the placement variable regular expression
 VARREGEXP = re.compile('%_?(\d+)')
 
-class ActionData:
+class ActionData(object):
   def __init__(self, ses):
     self._actions = {}
     self._ses = ses
@@ -97,7 +101,7 @@ class ActionData:
     When a variable changes, we go through and recompile all the
     regular expressions for the actions in this session.
     """
-    for mem in self._actions.keys():
+    for mem in list(self._actions.keys()):
       (trigger, compiled, response, color, priority, onetime, tag) = self._actions[mem]
       expansion = exported.expand_ses_vars(trigger, self._ses)
       if not expansion:
@@ -117,7 +121,7 @@ class ActionData:
 
   def getInfoMappings(self):
     l = []
-    for key in self._actions.keys():
+    for key in list(self._actions.keys()):
       mem = self._actions[key]
       l.append( { "trigger": mem[0],
                   "action": mem[2],
@@ -148,9 +152,9 @@ class ActionData:
     actions = self._actions
     keys = []
     if text:
-      keys = utils.expand_text(text, actions.keys())
+      keys = utils.expand_text(text, list(actions.keys()))
     elif mytag:  
-      keys = actions.keys()
+      keys = list(actions.keys())
 
     ret = []
     for mem in keys:
@@ -175,9 +179,8 @@ class ActionData:
 
     actionlist = self._actionlist
     if not actionlist:
-      actionlist = filter(lambda x: not self._disabled.has_key(x[6]),
-                          self._actions.values())
-      actionlist.sort(lambda x,y:cmp(x[3], y[3]))
+      actionlist = [x for x in list(self._actions.values()) if x[6] not in self._disabled]
+      actionlist.sort(key = lambda x:x[3])
       self._actionlist = actionlist
 
     colorline = utils.filter_cm(text)
@@ -205,7 +208,7 @@ class ActionData:
 
         # fill in values for all the variables in the match
         varvals = {}
-        for i in xrange(len(actionvars)):
+        for i in range(len(actionvars)):
           varvals[actionvars[i]] = match.group(i+1)
 
         # add special variables
@@ -221,7 +224,7 @@ class ActionData:
         except:
           exported.write_traceback()
 
-        if onetime and self._actions.has_key(action):
+        if onetime and action in self._actions:
           del self._actions[action]
           self._actionlist = None           # invalidate the list
 
@@ -253,7 +256,7 @@ class ActionData:
     @return: a list of strings where each string represents an action
     @rtype: list of strings
     """
-    listing = self._actions.keys()
+    listing = list(self._actions.keys())
     if text:
       listing = utils.expand_text(text, listing)
 
@@ -278,7 +281,7 @@ class ActionData:
     @rtype: list of strings
     """
     data = []
-    for mem in self._disabled.keys():
+    for mem in list(self._disabled.keys()):
       if not tag or mem == tag:
         data.append("disable tag={%s}" % mem)
 
@@ -291,7 +294,7 @@ class ActionData:
     @param tag: tag name
     @type tag: string
     """
-    if self._disabled.has_key(tag):
+    if tag in self._disabled:
       del self._disabled[tag]
       self._actionlist = None
 
@@ -310,11 +313,11 @@ class ActionData:
     Lists all the existing tags
     """
     tags = {}
-    for action in self._actions.values():
+    for action in list(self._actions.values()):
       tags[action[6]] = 0
     tags.update(self._disabled)  
     return [ "%s tag={%s}" % ((" enabled", "disabled")[disabled], mem)
-             for (mem, disabled) in tags.items() ]
+             for (mem, disabled) in list(tags.items()) ]
 
 
 class ActionManager(manager.Manager):
@@ -322,12 +325,12 @@ class ActionManager(manager.Manager):
     self._actions = {}
 
   def getActionData(self, ses):
-    if not self._actions.has_key(ses):
+    if ses not in self._actions:
       self._actions[ses] = ActionData(ses)
     return self._actions[ses]
 
   def clear(self, ses):
-    if self._actions.has_key(ses):
+    if ses in self._actions:
       self._actions[ses].clear()
 
   def getInfoMappings(self, item, ses):
@@ -361,17 +364,17 @@ class ActionManager(manager.Manager):
 
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._actions.has_key(basesession):
+      if basesession in self._actions:
         bdata = self.getActionData(basesession)
         ndata = self.getActionData(newsession)
 
-        for (mem, act) in bdata._actions.items():
+        for (mem, act) in list(bdata._actions.items()):
           ndata.addAction(mem, *act[2:])
-        for tag in bdata._disabled.keys():
+        for tag in list(bdata._disabled.keys()):
           ndata.disable(tag)
 
   def removeSession(self, ses):
-    if self._actions.has_key(ses):
+    if ses in self._actions:
       del self._actions[ses]
 
   def getStatus(self, ses):
@@ -401,7 +404,7 @@ class ActionManager(manager.Manager):
     This is registered with the variable_change hook.
     """
     ses = args["session"]
-    if self._actions.has_key(ses):
+    if ses in self._actions:
       self._actions[ses]._recompileRegexps()
 
   def mudfilter(self, args):
@@ -413,7 +416,7 @@ class ActionManager(manager.Manager):
     text = args["dataadj"]
 
     if exported.get_config("ignoreactions", ses, 0) == 0:
-      if self._actions.has_key(ses):
+      if ses in self._actions:
         self._actions[ses].checkActions(text)
 
     return text
@@ -614,7 +617,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global am, var_module
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("alias")
 
   exported.hook_unregister("mud_filter_hook", am.mudfilter)

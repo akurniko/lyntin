@@ -119,9 +119,13 @@ X{net_handle_telnet_option}::
    data - the telnet option itself
 
 """
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 import socket, select, re, os
 
-from lyntin import event, config, exported
+from lyntin import event, config, exported, settings
 from lyntin.ui import message
 
 ### --------------------------------------------
@@ -160,41 +164,41 @@ CODES = {255: "IAC",
 # more info on 91/MXP: http://www.zuggsoft.com/zmud/mxp.htm
 
 # telnet control codes
-IAC  = chr(255)
-DONT = chr(254)
-DO   = chr(253)
-WONT = chr(252)
-WILL = chr(251)
-SB   = chr(250)
-GA   = chr(249)
-NOP  = chr(241)
-SE   = chr(240)
-TELOPT_EOR = chr(239)
-SEND = chr(1)
-MODE = chr(1)
-FORWARDMASK = chr(2)
-IS   = chr(0)
+IAC  = b'\xff'
+DONT = b'\xfe'
+DO   = b'\xfd'
+WONT = b'\xfc'
+WILL = b'\xfb'
+SB   = b'\xfa'
+GA   = b'\xf9'
+NOP  = b'\xf1'
+SE   = b'\xf0'
+TELOPT_EOR = b'\xef'
+SEND = b'\x01'
+MODE = b'\x01'
+FORWARDMASK = b'\x02'
+IS   = b'\x00'
 
-# some nice strings to help with the telnet control code
+# some nice byte strings to help with the telnet control code
 # negotiation
 DD       = DO + DONT
 WW       = WILL + WONT
 DDWW     = DD + WW
 
 # telnet option codes
-ECHO     = chr(1)
-SGA      = chr(3)
-TERMTYPE = chr(24)
-EOR      = chr(25)
-NAWS     = chr(31)
-LINEMODE = chr(34)
-ENV      = chr(39)
+ECHO     = b'\x01'
+SGA      = b'\x03'
+TERMTYPE = b'\x18'
+EOR      = b'\x19'
+NAWS     = b'\x1f'
+LINEMODE = b'\x22'
+ENV      = b'\x27'
 
-BELL     = chr(7)
+BELL     = b'\x07'
 
 def _fcc(code):
-  if CODES.has_key(ord(code)):
-    return CODES[ord(code)]
+  if code in CODES:
+    return CODES[code]
   return str(code)
 
 def _cc(option):
@@ -215,7 +219,7 @@ def _cc(option):
                    option[3:-2], _fcc(option[-2]), _fcc(option[-1])])
 
 
-class SocketCommunicator:
+class SocketCommunicator(object):
   """
   The SocketCommunicator handles all incoming and outgoing data from 
   and to the mud, telnet control codes, and some data transformations.
@@ -239,18 +243,18 @@ class SocketCommunicator:
     self._prompt_regex = self._buildPromptRegex()
 
     # this is the regex that we use to split the incoming text.
-    delimiters = ( IAC+GA, IAC+TELOPT_EOR, "\n" )
+    delimiters = ( IAC+GA, IAC+TELOPT_EOR, b"\n" )
     # make a regexp matching any of the delimiters above
-    self._line_regex = re.compile("(" + "|".join(delimiters) + ")",
+    self._line_regex = re.compile(b"(" + b"|".join(delimiters) + b")",
                                   re.MULTILINE | re.DOTALL)
 
     # "The server can do delimited prompts" flag
     self._good_prompts = 0
 
     # handle termtype issues
-    if config.options.has_key("term"):
+    if "term" in config.options:
       self._termtype = config.options["term"][0]
-    elif os.environ.has_key("TERM"):
+    elif "TERM" in os.environ:
       self._termtype = os.environ["TERM"]
     else:
       self._termtype = "lyntin"
@@ -275,9 +279,9 @@ class SocketCommunicator:
     @rtype: Regexp object
     """
     if prompt:
-      r = "(" + IAC+GA + "|" + IAC+TELOPT_EOR + "|" + prompt + ")"
+      r = b"(" + IAC+GA + b"|" + IAC+TELOPT_EOR + b"|" + prompt.encode(settings.REMOTE_ENCODING) + b")"
     else:
-      r = "(" + IAC+GA + "|" + IAC+TELOPT_EOR + ")"
+      r = b"(" + IAC+GA + b"|" + IAC+TELOPT_EOR + b")"
     return re.compile(r)
 
   def __repr__(self):
@@ -371,17 +375,17 @@ class SocketCommunicator:
     """
     from lyntin import exported
     try:
-      data = ''
+      data = b''
       while not self._shutdownflag:
         newdata = self._pollForData()
 
         if newdata:
           newdata = self._filterIncomingData(newdata)
-          if newdata == "":
+          if newdata == b"":
             continue
 
           last_index = 0
-          alldata = (data+newdata).replace("\r","")
+          alldata = (data+newdata).replace(b"\r",b"")
           # incrementally walk through each line in the data,
           # adjusting last_index to the end of the previous match
           for (m) in self._line_regex.finditer(alldata):
@@ -391,8 +395,8 @@ class SocketCommunicator:
           # keep the remainder (empty if alldata ended with a delimiter)
           data = alldata[last_index:]
 
-        elif newdata == '':
-          # if we got back an empty string, then something's amiss
+        elif newdata == b'':
+          # if we got back an empty byte array, then something's amiss
           # and we should dump them.
           if data:
             self.handleData(data)
@@ -406,7 +410,7 @@ class SocketCommunicator:
           # delimiting it's prompts with telnet GA or EOR option.
           # We'll handle these data because the socket read was timed out.
           self.handleData(data)
-          data = ''
+          data = b''
 
     except SystemExit:
       if self._session:
@@ -439,7 +443,7 @@ class SocketCommunicator:
     Writes data to the mud after passing it through net_write_data_filter.
 
     @param data: the data to write to the socket
-    @type  data: string
+    @type  data: bytes
 
     @param convert: whether (1) or not (0) we should convert eol stuff to 
         CRLF and IAC to IAC IAC.
@@ -448,8 +452,9 @@ class SocketCommunicator:
     @raises Exception: if we have problems sending the data over the
         socket
     """
+    data = data + b"\n"
     if convert:
-      data = data.replace("\n", "\r\n")
+      data = data.replace(b"\n", b"\r\n")
 
       if IAC in data:
         data = data.replace(IAC, IAC+IAC)
@@ -470,7 +475,7 @@ class SocketCommunicator:
       try:
         self._sock.send(data)
 
-      except Exception, e:
+      except Exception as e:
         if self._shutdownflag == 0 and self._session:
           self._session.shutdown(())
           raise Exception(e)
@@ -483,7 +488,7 @@ class SocketCommunicator:
     and toss it on the queue.
 
     @param data: the incoming data from the mud
-    @type  data: string
+    @type  data: bytes
     """
     global BELL
 
@@ -491,16 +496,16 @@ class SocketCommunicator:
     count = data.count(BELL)
     for i in range(count):
       event.SpamEvent(hookname="bell_hook", argmap={"session": self._session}).enqueue()
-    data = data.replace(BELL, "")
+    data = data.replace(BELL, b"")
 
     # handle telnet option stuff
     if IAC in data:
       data = self.handleNego(data)
 
-    if not self._config.get("promptdetection") or data.endswith("\n"):
-      event.MudEvent(self._session, data).enqueue() 
+    if not self._config.get("promptdetection") or data.endswith(b"\n"):
+      event.MudEvent(self._session, data.decode(settings.REMOTE_ENCODING)).enqueue()
     else:
-      event.SpamEvent(hookname="prompt_hook", argmap={"session": self._session, "prompt": data}).enqueue()
+      event.SpamEvent(hookname="prompt_hook", argmap={"session": self._session, "prompt": data.decode(settings.REMOTE_ENCODING)}).enqueue()
 
 
   def handleNego(self, data):
@@ -509,10 +514,10 @@ class SocketCommunicator:
 
     @param data: the incoming data from the mud that we need to parse
         for telnet control code stuff
-    @type  data: string
+    @type  data: bytes
 
     @return: the data without the telnet control codes
-    @rtype:  string
+    @rtype:  bytes
     """
     marker = -1
     i = data.find(IAC)
@@ -544,7 +549,10 @@ class SocketCommunicator:
 
         # handles DO/DONT/WILL/WONT stuff
         if data[i+1] in DDWW:
-          option = data[i:i+3]
+          # we need list of single bytes not bytes sequence
+          # because from byte sequence getting one byte return int
+          # and then it is not possible to concat bytes to int
+          option = [bytes([x]) for x in data[i:i+3]]
 
           self.logControl("receive: " + _cc(option))
           if option[2] == ECHO:

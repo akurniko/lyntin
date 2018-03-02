@@ -40,10 +40,11 @@ Aliases are currently handled via string finding and not regular
 expressions.  At some point in the future, this will be changed to
 regular expressions to better handle a wider variety of aliases.
 """
+from builtins import object
 from lyntin import manager, utils, exported
 from lyntin.modules import modutils
 
-class AliasData:
+class AliasData(object):
   """ Manages aliases."""
   def __init__(self):
     self._aliases = {}
@@ -61,7 +62,7 @@ class AliasData:
     @raises ValueError: when the name is the same as the expansion
     """
     if name == expansion:
-      raise ValueError, "name cannot equal expansion."
+      raise ValueError("name cannot equal expansion.")
     self._aliases[name] = expansion
 
   def clear(self):
@@ -84,7 +85,7 @@ class AliasData:
     @return: the list of alias/expansions that match the text
     @rtype: list of (string, string)
     """
-    badaliases = utils.expand_text(text, self._aliases.keys())
+    badaliases = utils.expand_text(text, list(self._aliases.keys()))
 
     ret = []
     for mem in badaliases:
@@ -100,7 +101,7 @@ class AliasData:
     @return: all the aliases we're managing (but not the expansions)
     @rtype: list of strings
     """
-    listing = self._aliases.keys()
+    listing = list(self._aliases.keys())
     listing.sort()
     return listing
 
@@ -123,7 +124,7 @@ class AliasData:
       firstword = input.split(' ', 1)[0]
 
       # if we match an alias, we return the expansion
-      if firstword in self._aliases.keys():
+      if firstword in list(self._aliases.keys()):
         return self._aliases[firstword]            
 
     return None
@@ -155,7 +156,7 @@ class AliasData:
     if len(self._aliases) == 0:
       return []
 
-    listing = self._aliases.keys()
+    listing = list(self._aliases.keys())
     if text:
       listing = utils.expand_text(text, listing)
 
@@ -167,7 +168,7 @@ class AliasData:
 
   def getInfoMappings(self):
     l = []
-    for m in self._aliases.keys():
+    for m in list(self._aliases.keys()):
       l.append( { "alias": m, "expansion": self._aliases[m] } )
 
     return l
@@ -184,12 +185,12 @@ class AliasManager(manager.Manager):
     self._aliasdata = {}
 
   def getAliasData(self, ses):
-    if not self._aliasdata.has_key(ses):
+    if ses not in self._aliasdata:
       self._aliasdata[ses] = AliasData()
     return self._aliasdata[ses]
 
   def clear(self, ses):
-    if not self._aliasdata.has_key(ses):
+    if ses not in self._aliasdata:
       return
     self._aliasdata[ses].clear()
 
@@ -206,7 +207,7 @@ class AliasManager(manager.Manager):
     if item != "alias":
       raise ValueError("%s is not a valid item for this manager." % item)
 
-    if self._aliasdata.has_key(ses):
+    if ses in self._aliasdata:
       return self._aliasdata[ses].getInfoMappings()
     return []
     
@@ -244,7 +245,7 @@ class AliasManager(manager.Manager):
     verbatim = args["verbatim"]
     text = args["dataadj"]
   
-    if not self._aliasdata.has_key(ses) or verbatim == 1:
+    if ses not in self._aliasdata or verbatim == 1:
       return text
 
     aliasexpansion = self._aliasdata[ses].expand(text)
@@ -258,15 +259,15 @@ class AliasManager(manager.Manager):
 
   def addSession(self, newsession, basesession=None):
     if basesession:
-      if self._aliasdata.has_key(basesession):
+      if basesession in self._aliasdata:
         bdata = self.getAliasData(basesession)
         ndata = self.getAliasData(newsession)
 
-        for mem in bdata._aliases.keys():
+        for mem in list(bdata._aliases.keys()):
           ndata.addAlias(mem, bdata._aliases[mem])
 
   def removeSession(self, ses):
-    if self._aliasdata.has_key(ses):
+    if ses in self._aliasdata:
       del self._aliasdata[ses]
 
 
@@ -315,7 +316,7 @@ def alias_cmd(ses, args, input):
   # they're creating an alias
   try:
     ad.addAlias(name, command)
-  except ValueError, e:
+  except ValueError as e:
     exported.write_error("alias: %s" % e, ses)
 
   if not quiet:
@@ -350,7 +351,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global am
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("alias")
 
   exported.hook_register("user_filter_hook", am.userfilter)

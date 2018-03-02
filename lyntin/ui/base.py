@@ -9,6 +9,7 @@
 """
 Holds the base ui class for Lyntin as well as the get_ui function
 """
+from builtins import object
 import string, re, sys, os
 from lyntin import exported, utils
 from lyntin.ui import message
@@ -34,7 +35,7 @@ def get_ui(uiname):
     raise ValueError("ui '%s' does not exist." % uiname)
   return _module.get_ui_instance()
 
-class BaseUI:
+class BaseUI(object):
   """
   Base ui class.
 

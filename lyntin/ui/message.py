@@ -12,6 +12,7 @@ allows us to scope data going to the ui.
 """
 
 """ The message type constants."""
+from builtins import object
 ERROR = "ERROR: "
 USERDATA = "USERDATA: "
 MUDDATA = "MUDDATA: "
@@ -23,7 +24,7 @@ MESSAGETYPES = {ERROR: "ERROR: ",
                 MUDDATA: "MUDDATA: ",
                 LTDATA: "LTDATA: "}
 
-class Message:
+class Message(object):
   """
   Encapsulates a message to be written to the user.
   """

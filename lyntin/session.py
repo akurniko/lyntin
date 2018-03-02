@@ -104,12 +104,17 @@ X{mud_filter_hook}::
 
    dataadj - the latest adjusted data from the mud
 """
+from __future__ import absolute_import
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 import re, copy, string, os
 from lyntin import exported, utils, ansi, config, event, settings
 
 ESC = chr(27)
 
-class Session:
+class Session(object):
   """
   A session is a nice container of all the stuff that encompasses a 
   user session: aliases, actions, commands...
@@ -143,7 +148,7 @@ class Session:
     return "session.Session %s" % self._name
 
   def setupCommonSession(self):
-    import config
+    from . import config
     c = self._engine.getConfigManager()
 
     if type(config.options["snoopdefault"]) is list:
@@ -226,7 +231,7 @@ class Session:
     the list of managers registered with the engine and calls
     the clear method with itself.
     """
-    for mem in self._engine._managers.values():
+    for mem in list(self._engine._managers.values()):
       mem.clear(self)
 
     self._databuffer = []
@@ -279,7 +284,7 @@ class Session:
       exported.hook_spam("to_mud_hook", {"session": self, "data": line, "tag": tag})
 
     if self._socket:
-      retval = self._socket.write(str(message))
+      retval = self._socket.write(message.encode(settings.REMOTE_ENCODING))
       if retval:
         exported.write_error("socket write: %s" % retval)
 
@@ -384,7 +389,7 @@ class Session:
     else:
       d = self._vars
 
-    if d.has_key(var):
+    if var in d:
       oldvalue = d[var]
       del d[var]
       self._varChangeHook(var, oldvalue, None)
@@ -419,8 +424,6 @@ class Session:
         output for internal stuff too.  1 if internal, 0 if not.
     @type  internal: boolean
     """
-    if internal==0:
-      input = input.decode(settings.LOCAL_ENCODING)
     # this is the point of much recursion.  everything is registered
     # as a filter and recurses accordingly.
     spamargs = {"session": self, "internal": internal, 
@@ -440,9 +443,7 @@ class Session:
     input = input.replace("\\%", "%")
 
     # just regular data to the mud
-    #print input
-    #self.writeSocket(input)
-    self.writeSocket(input.encode(settings.REMOTE_ENCODING) + "\n")
+    self.writeSocket(input)
 
 
   ### ------------------------------------------------
@@ -469,8 +470,6 @@ class Session:
       input = input[:index]
 
     # we add the new input to the databuffer
-    input = input.decode(settings.REMOTE_ENCODING)
-    
     self.addToDataBuffer(input)
 
     # we split the input into a series of lines and operate on

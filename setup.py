@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
+from builtins import str
 from distutils.core import setup
-import re, sys, lyntin
+import re, sys, lyntin.constants
 
 from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup, find_packages
 
-VERSION = str(lyntin.__version__)
-(AUTHOR, EMAIL) = re.match("^(.*?)\s*<(.*)>$", lyntin.__author__).groups()
-URL = lyntin.__url__
-LICENSE = lyntin.__license__
+VERSION = str(lyntin.constants.__version__)
+(AUTHOR, EMAIL) = re.match("^(.*?)\s*<(.*)>$", lyntin.constants.__author__).groups()
+URL = lyntin.constants.__url__
+LICENSE = lyntin.constants.__license__
 
 if '--format=wininst' in sys.argv:
   SCRIPTS = ['scripts/runlyntin.pyw']

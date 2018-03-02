@@ -55,8 +55,12 @@ Supported options::
 Refer to the modules.lyntincmds and modules.tintincmds for examples
 on arg specs and commands and how it all intertwines.
 """
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import range
+from builtins import object
 import re, time
-import utils
+from . import utils
 
 defaultOptions={ "stripBraces": 1, "noparsing": 0, "limitparsing": -1, "nodefaults":0 }
 optionParser = None
@@ -64,7 +68,7 @@ optionParser = None
 class ParserException(Exception):
   pass
 
-class ArgumentParser:
+class ArgumentParser(object):
   """
   This is the actual ArgumentParser class.  Each command gets its
   own ArgumentParser.  It handles taking in user input and parsing
@@ -108,7 +112,7 @@ class ArgumentParser:
     @return: the value of the option or None
     @rtype: varies (string or int)
     """
-    if self.options.has_key(optionname):
+    if optionname in self.options:
       return self.options[optionname]
     else:
       return None
@@ -143,14 +147,14 @@ class ArgumentParser:
       optionParser = ArgumentParser("otherOptions* otherValuedOptions**")
     argdict = optionParser.parse(argoptions)
 
-    for key in argdict.keys():
+    for key in list(argdict.keys()):
       if key=="otherOptions":
         for otherOption in argdict[key]:
           self.options[otherOption] = 1
           if len(otherOption)>3 and otherOption[0:2]=="no":
             self.options[otherOption[2:]] = 0
       elif key=="otherValuedOptions":
-        for otherKey in argdict[key].keys():
+        for otherKey in list(argdict[key].keys()):
           self.options[otherKey] = argdict[key][otherKey]
       else:
         self.options[key] = argdict[key]
@@ -208,12 +212,12 @@ class ArgumentParser:
 
       if len(argname) >= 1 and argname.endswith("*"):
         if argdef != None:
-          raise ParserException, "cannot specify a default value for a collection argument (%s=%s)" % (argname, argdef)
+          raise ParserException("cannot specify a default value for a collection argument (%s=%s)" % (argname, argdef))
 
         if len(argname) >= 2 and argname.endswith("**"):
           argname = argname[:-2]
           if i < len(parsedspec) -1:
-            raise ParserException, "named collection argument must be the last argument (%s)" % (argname)
+            raise ParserException("named collection argument must be the last argument (%s)" % (argname))
           parser = ExtraNamedParser(self, argname)
           namedCollector = 1
 
@@ -228,7 +232,7 @@ class ArgumentParser:
 
       typechecker = _createTypeChecker(typespec)
       if not typechecker:
-        raise ParserException, "Unknown type specifier: %s" % (typespec)
+        raise ParserException("Unknown type specifier: %s" % (typespec))
 
       parser.setTypeChecker(typechecker)
 
@@ -237,13 +241,13 @@ class ArgumentParser:
         defaultSeen = 1
 
       if defaultSeen and not parser.defaultset:
-        raise ParserException, "Argument without default value (%s) seen after default values already specified" % (argname)
+        raise ParserException("Argument without default value (%s) seen after default values already specified" % (argname))
       
       if not namedCollector and not indexCollector:
         if not doneWithIndices:
           self.indexparsers.append(parser)
-        if self.parsers.has_key(argname):
-          raise ParserException, "Multiple argument named %s specified." % (argname)
+        if argname in self.parsers:
+          raise ParserException("Multiple argument named %s specified." % (argname))
         self.parsers[argname] = parser
       elif namedCollector:
         self.extranamedparser = parser
@@ -282,20 +286,20 @@ class ArgumentParser:
 
         if val == None:
           if foundNamedArg and not self.extraindexparser:
-            raise ParserException, "Non-named argument (%s) found after Named argument" % (key)
+            raise ParserException("Non-named argument (%s) found after Named argument" % (key))
           if i < len(self.indexparsers):
             parser = self.indexparsers[i]
           elif self.extraindexparser:
             parser = self.extraindexparser
           else:
-            raise ParserException, "Unexpected argument received %s" % (key)
+            raise ParserException("Unexpected argument received %s" % (key))
           parser.parseInto(i, key, argdict)
         else:
           foundNamedArg = 1
-          if self.parsers.has_key(key):
+          if key in self.parsers:
             parser = self.parsers[key]
           else:
-            matchedkeys = [ arg for arg in self.parsers.keys() if arg.find(key) == 0 ]
+            matchedkeys = [ arg for arg in list(self.parsers.keys()) if arg.find(key) == 0 ]
 
             if len(matchedkeys) == 1:
               parser = self.parsers[matchedkeys[0]]
@@ -312,8 +316,8 @@ class ArgumentParser:
 
     # now check that everything has been specified, putting in defaults 
     # where available
-    for key in self.parsers.keys():
-      if not argdict.has_key(key):
+    for key in list(self.parsers.keys()):
+      if key not in argdict:
         # gotta be careful here with the extra defaultset value since
         # the parser may parse a string into None, or anything really
         default = None
@@ -331,7 +335,7 @@ class ArgumentParser:
           defaultset = 1
         
         if not defaultset and not self.getOption("noparsing"):
-          raise ParserException, "Must specify a value for argument %s" % (key)
+          raise ParserException("Must specify a value for argument %s" % (key))
         else:
           argdict[key] = default
           
@@ -413,7 +417,7 @@ class ArgumentParser:
             arg = arg + nextchar
       elif nextchar == "\\":
         if input == "":
-          raise ParserException, "\\ at end of line."
+          raise ParserException("\\ at end of line.")
         else:
           nextchar = input[0:1]
           input = input[1:]
@@ -424,7 +428,7 @@ class ArgumentParser:
       elif nextchar == "}":
         bracketdepth = bracketdepth - 1
         if bracketdepth < 0:
-          raise ParserException, "mismatched }"
+          raise ParserException("mismatched }")
         if val != None:
           val = val + nextchar
         else:
@@ -445,7 +449,7 @@ class ArgumentParser:
           arg = arg + nextchar
 
     if bracketdepth:
-      raise ParserException, "Mismatched {"
+      raise ParserException("Mismatched {")
 
     if arg != "":
       arguments.append( (arg, val) )
@@ -470,7 +474,7 @@ class ArgumentParser:
     
     return arguments
 
-class Parser:
+class Parser(object):
   """
   This is the base class for the parsers that argumentparser uses to
   actually populate the dictionary with each argument.
@@ -517,8 +521,8 @@ class Parser:
 
     @raises ParserException: if multiple values were given for the argument
     """
-    if argdict.has_key(self.argname):
-      raise ParserException, "Multiple values for argument %s given" % (self.argname)
+    if self.argname in argdict:
+      raise ParserException("Multiple values for argument %s given" % (self.argname))
     else:
       argdict[self.argname] = self.parse(val)
 
@@ -590,7 +594,7 @@ class ExtraIndexParser(Parser):
     @raises ParserException: if multiple values were given for the argument
     """
     val = self.parse(val)
-    if argdict.has_key(self.argname):
+    if self.argname in argdict:
       argdict[self.argname].append(val)
     else:
       argdict[self.argname] = [val]
@@ -632,9 +636,9 @@ class ExtraNamedParser(Parser):
     @raises ParserException: if multiple values were given for the argument
     """
     val=self.parse(val)
-    if argdict.has_key(self.argname):
-      if argdict.has_key(key) or argdict[self.argname].has_key(key):
-        raise ParserException, "Multiple values given for argument %s" % (key)
+    if self.argname in argdict:
+      if key in argdict or key in argdict[self.argname]:
+        raise ParserException("Multiple values given for argument %s" % (key))
       argdict[self.argname][key] = (val)
     else:
       argdict[self.argname] = {key:val}
@@ -669,13 +673,13 @@ def _createTypeChecker(typespec):
   else:
     typename, typeargs = typespec
 
-  if not typecheckers.has_key(typename):
+  if typename not in typecheckers:
     return None
   typechecker = typecheckers[typename](typename,typeargs)
 
   return typechecker
 
-class TypeChecker:
+class TypeChecker(object):
   """
   Trivial base class for argument checkers
   """
@@ -712,7 +716,7 @@ class StringChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
     return
 
   def check(self, arg):
@@ -749,7 +753,7 @@ class IntChecker(TypeChecker):
         non-configurable.
     """
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self,arg):
     """
@@ -771,7 +775,7 @@ class BooleanChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self,arg):
     """
@@ -802,7 +806,7 @@ class BooleanOrNoneChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self,arg):
     """
@@ -824,7 +828,7 @@ class BooleanOrNoneChecker(TypeChecker):
     elif arg == "None" or arg == "-" or arg == "":
       return None
     else:
-      raise ParserException, "Invalid boolean value specified: %s" % (arg)
+      raise ParserException("Invalid boolean value specified: %s" % (arg))
 
 typecheckers["booleanornone"] = BooleanOrNoneChecker
 
@@ -834,7 +838,7 @@ class EvalChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self,arg):
     """
@@ -851,8 +855,8 @@ class EvalChecker(TypeChecker):
     """
     try:
       return eval(arg)
-    except Exception, e:
-      raise ParserException, "Error eval-ing argument (%s): %s" % (arg, e)
+    except Exception as e:
+      raise ParserException("Error eval-ing argument (%s): %s" % (arg, e))
 
 typecheckers["eval"] = EvalChecker 
 
@@ -862,7 +866,7 @@ class TimeSpanChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self, arg):
     """
@@ -880,7 +884,7 @@ class TimeSpanChecker(TypeChecker):
       time = utils.parse_timespan(arg)
       return time
     except:
-      raise ParserException, "Invalid timespan specified %s" % (arg,)
+      raise ParserException("Invalid timespan specified %s" % (arg,))
 
 typecheckers["timespan"] = TimeSpanChecker
   
@@ -893,7 +897,7 @@ class TimeChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self, arg):
     """
@@ -912,7 +916,7 @@ class TimeChecker(TypeChecker):
     if time != None:
       return time
     else:
-      raise ParserException, "Invalid time specified %s" % (arg,)
+      raise ParserException("Invalid time specified %s" % (arg,))
 
 typecheckers["time"] = TimeChecker
   
@@ -951,7 +955,7 @@ class ChoiceChecker(TypeChecker):
         if len(item) == len(arg):
           return item
     if len(possibilities) == 0 or len(possibilities) > 1:
-      raise ParserException, "Invalid argument, must be one of %s." % (self._choices,)
+      raise ParserException("Invalid argument, must be one of %s." % (self._choices,))
     else:
       return possibilities[0]
 
@@ -963,7 +967,7 @@ class ReChecker(TypeChecker):
   """
   def __init__(self, typename, typeargs):
     if typeargs:
-      raise ParserException, "TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename)
+      raise ParserException("TypeArgs (%s) specified for non-configurable type (%s)" % (typeargs, typename))
 
   def check(self, arg):
     """
@@ -987,13 +991,13 @@ if __name__ == '__main__':
     ("mapname*","noparsing"):["3k mapper by notadragon"],
     ("option* quiet:boolean=true",None):["a b c quiet=false d","a b c quiet=true","x b c"]} 
 
-  for argspec,argoptions in testargs.keys():
+  for argspec,argoptions in list(testargs.keys()):
     argparser = ArgumentParser(argspec,argoptions)
-    print "Argspec: %s" % (argspec)
-    if argoptions: print "Argopts: %s" % (argoptions)
+    print("Argspec: %s" % (argspec))
+    if argoptions: print("Argopts: %s" % (argoptions))
     for args in testargs[(argspec,argoptions)]:
-      print "Args   : %s" % (args)
-      print "Dict   : %s" % (`argparser.parse(args)`)
+      print("Args   : %s" % (args))
+      print("Dict   : %s" % (repr(argparser.parse(args))))
 
 # Local variables:
 # mode:python

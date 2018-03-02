@@ -122,13 +122,20 @@ X{session_change_hook}::
 
    previous - the session that was previously the current session
 """
-import Queue, thread, sys, traceback, os.path
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
+import queue, _thread, sys, traceback, os.path
 from threading import Thread
 
 from lyntin import config, session, utils, event, exported, helpmanager, history, commandmanager, constants
 
 
-class Engine:
+class Engine(object):
   """
   This is the engine class.  There should be only one engine.
   """
@@ -139,12 +146,12 @@ class Engine:
 
     # this is the event queue that holds all the events in
     # the system.
-    self._event_queue = Queue.Queue()
+    self._event_queue = queue.Queue()
 
     # this is a lock for writing stuff to the ui--makes sure
     # we're not hosing things by having multiple things write
     # to the ui simultaneously....  ick.
-    self._ui_lock = thread.allocate_lock()
+    self._ui_lock = _thread.allocate_lock()
 
     # this is the master shutdown flag for the event queue
     # handling.
@@ -276,7 +283,7 @@ class Engine:
     @rtype: list of strings
     """
     data = []
-    for mem in self._hooks.keys():
+    for mem in list(self._hooks.keys()):
       data.append("   %s - %d registered functions" % (mem, self._hooks[mem].count()))
 
     return data
@@ -293,7 +300,7 @@ class Engine:
     @returns: the hook by name
     @rtype: utils.PriorityQueue
     """
-    if self._hooks.has_key(hookname):
+    if hookname in self._hooks:
       return self._hooks[hookname]
 
     if newhook==1:
@@ -498,7 +505,7 @@ class Engine:
           continue
 
         # is it a session?
-        if self._sessions.has_key(ses):
+        if ses in self._sessions:
           input = mem.split(" ", 1)
           if len(input) < 2:
             self.set_current_session(self._sessions[ses])
@@ -515,7 +522,7 @@ class Engine:
           else:
             newinput = commandchar + "cr"
 
-          for sessionname in self._sessions.keys():
+          for sessionname in list(self._sessions.keys()):
             if sessionname != "common":
               self._sessions[sessionname].handleUserData(newinput, internal)
           historyitems.append(mem)
@@ -586,11 +593,11 @@ class Engine:
 
     @raises ValueError: if the session has a non-unique name
     """
-    if self._sessions.has_key(name):
+    if name in self._sessions:
       raise ValueError("Session of that name already exists.")
 
     commonsession = self.getSession("common")
-    for mem in self._managers.values():
+    for mem in list(self._managers.values()):
       mem.addSession(session, commonsession)
 
     self._sessions[name] = session
@@ -602,16 +609,16 @@ class Engine:
     @param ses: the session to unregister
     @type  ses: session.Session instance
     """
-    if not self._sessions.has_key(ses.getName()):
+    if ses.getName() not in self._sessions:
       raise ValueError("No session of that name.")
 
     if ses == self._current_session:
       self.changeSession()
 
-    for mem in self._managers.values():
+    for mem in list(self._managers.values()):
       try:
         mem.removeSession(ses)
-      except Exception, e:
+      except Exception as e:
         exported.write_error("Exception with removing session %s." % e)
 
     del self._sessions[ses.getName()]
@@ -623,7 +630,7 @@ class Engine:
     @return: all the session names
     @rtype: list of strings
     """
-    return self._sessions.keys()
+    return list(self._sessions.keys())
 
   def getSession(self, name):
     """
@@ -635,7 +642,7 @@ class Engine:
     @return: the session of that name or None
     @rtype: session.Session or None
     """
-    if self._sessions.has_key(name):
+    if name in self._sessions:
       return self._sessions[name]
     else:
       return None
@@ -651,7 +658,7 @@ class Engine:
     @type  name: string
     """
     if name == '':
-      keys = self._sessions.keys()
+      keys = list(self._sessions.keys())
 
       # it's a little bit of finagling here to make sure
       # that the common session is the last one we would
@@ -664,7 +671,7 @@ class Engine:
       self.set_current_session(self._sessions[keys[0]])
 
     # if they pass in a name, we switch to that session.
-    elif self._sessions.has_key(name):
+    elif name in self._sessions:
       self.set_current_session(self._sessions[name])
 
     else:
@@ -791,7 +798,7 @@ class Engine:
     data.append("   total sessions: %d" % len(self._sessions))
     data.append("   current session: %s" % self._current_session.getName())
 
-    for mem in self._sessions.values():
+    for mem in list(self._sessions.values()):
       # we do some fancy footwork here to make it print nicely
       info = "\n   ".join(self.getStatus(mem))
       data.append('   %s\n' % info)
@@ -885,7 +892,7 @@ class Engine:
     @return: 0 if nothing happened, 1 if the manager was removed
     @rtype: boolean
     """
-    if self._managers.has_key(name):
+    if name in self._managers:
       del self._managers[name]
       return 1
     return 0
@@ -900,7 +907,7 @@ class Engine:
     @return: the manager instance or None
     @rtype: manager.Manager subclass or None
     """
-    if self._managers.has_key(name):
+    if name in self._managers:
       return self._managers[name]
     return None
 
@@ -921,7 +928,7 @@ class Engine:
     data = ses.getStatus()
 
     # loop through our managers and get status from them
-    managerkeys = self._managers.keys()
+    managerkeys = list(self._managers.keys())
     managerkeys.sort()
 
     for mem in managerkeys:
@@ -946,7 +953,7 @@ def main(defaultoptions={}):
   @type  defaultoptions: dict
   """
   try:
-    import sys, os, traceback, ConfigParser
+    import sys, os, traceback, configparser
     from lyntin import config, event, utils, exported
     from lyntin.ui import base
     import locale
@@ -960,11 +967,11 @@ def main(defaultoptions={}):
 
     for mem in optlist:
       if mem[0] == '--help':
-        print constants.HELPTEXT
+        print(constants.HELPTEXT)
         sys.exit(0)
 
       elif mem[0] == '--version':
-        print constants.VERSION
+        print(constants.VERSION)
         sys.exit(0)
 
       elif mem[0] in ["--configuration", "-c"]:
@@ -972,14 +979,14 @@ def main(defaultoptions={}):
         # they can provide multiple ini files, but each new
         # ini file will OVERRIDE the contents of the previous ini file
         # where the two files intersect.
-        parser = ConfigParser.ConfigParser()
+        parser = configparser.ConfigParser()
         parser.read([mem[1]])
 
         newoptions = {}
         for s in parser.sections():
           for o in parser.options(s):
             c = parser.get(s, o).split(",")
-            if newoptions.has_key(o):
+            if o in newoptions:
               newoptions[o] += c
             else:
               newoptions[o] = c
@@ -992,7 +999,7 @@ def main(defaultoptions={}):
           opt = opt[1:]
 
         if len(opt) > 0:
-          if config.options.has_key(opt):
+          if opt in config.options:
             if type(config.options[opt]) is list:
               config.options[opt].append(mem[1])
             else:
@@ -1001,13 +1008,13 @@ def main(defaultoptions={}):
             config.options[opt] = [mem[1]]
 
     for mem in ["datadir", "ui", "commandchar"]:
-      if config.options.has_key(mem) and type(config.options[mem]) is list:
+      if mem in config.options and type(config.options[mem]) is list:
         config.options[mem] = config.options[mem][0]
 
     # if they haven't set the datadir via the command line, then
     # we go see if they have a HOME in their environment variables....
     if not config.options["datadir"]:
-      if os.environ.has_key("HOME"):
+      if "HOME" in os.environ:
         config.options["datadir"] = os.environ["HOME"]
     config.options["datadir"] = utils.fixdir(config.options["datadir"])
 
@@ -1037,8 +1044,8 @@ def main(defaultoptions={}):
       uiinstance = base.get_ui(modulename)
       if not uiinstance:
         raise ValueError("No ui instance.")
-    except Exception, e:
-      print "Cannot start '%s': %s" % (uiname, e)
+    except Exception as e:
+      print("Cannot start '%s': %s" % (uiname, e))
       traceback.print_exc()
       sys.exit(0)
 
@@ -1057,8 +1064,8 @@ def main(defaultoptions={}):
     exported.write_message("Loading Lyntin modules.")
   
     try:
-      import modules.__init__
-      modules.__init__.load_modules()
+      from . import modules
+      modules.load_modules()
     except:
       exported.write_traceback("Modules did not load correctly.")
       sys.exit(1)

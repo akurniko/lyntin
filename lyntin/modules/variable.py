@@ -41,25 +41,26 @@ X{variable_change_hook}::
 
    newvalue - the new value of the variable
 """
+from builtins import object
 import time
 from lyntin import manager, utils, config, engine, exported, session
 from lyntin.modules import modutils
 
-class DatadirBuiltin:
+class DatadirBuiltin(object):
   """
   Allows us to do dynamic DATADIRs as a global variable.
   """
   def __init__(self): pass
   def __str__(self): return config.options["datadir"]
 
-class TimeStampBuiltin:
+class TimeStampBuiltin(object):
   """
   Allows us to do dynamic TIMESTAMPs as a global variable.
   """
   def __init__(self): pass
   def __str__(self): return time.asctime()
 
-class LogTimeStampBuiltin:
+class LogTimeStampBuiltin(object):
   """
   Allows us to do dynamic TIMESTAMPs as a global variable in the
   form yyyymmddhhmmss.  Good for logfiles.
@@ -74,7 +75,7 @@ class VariableManager(manager.Manager):
     session.Session.global_vars["DATADIR"] = DatadirBuiltin()
 
     import os
-    if os.environ.has_key("HOME"):
+    if "HOME" in os.environ:
       session.Session.global_vars["HOME"] = os.environ["HOME"]
 
   def clear(self, ses):
@@ -86,7 +87,7 @@ class VariableManager(manager.Manager):
   def removeVariables(self, ses, text):
     d = dict(ses._vars)
     d.update(session.Session.global_vars)
-    badvariables = utils.expand_text(text, d.keys())
+    badvariables = utils.expand_text(text, list(d.keys()))
     ret = []
     for mem in badvariables:
       ret.append( (mem, d[mem]) )
@@ -133,7 +134,7 @@ class VariableManager(manager.Manager):
     return utils.expand_vars(t, ses._vars)
 
   def getInfo(self, ses, text=""):
-    data = ses._vars.keys()
+    data = list(ses._vars.keys())
     if text:
       data = utils.expand_text(text, data)
     data = ["variable {%s} {%s}" % (m, ses._vars[m]) for m in data]
@@ -152,7 +153,7 @@ class VariableManager(manager.Manager):
     if item != "variable":
       raise ValueError("%s is not a valid item for this manager." % item)
     l = []
-    for mem in self._vars.keys():
+    for mem in list(self._vars.keys()):
       l.append( {"var": mem, "expansion": ses._vars[mem]} )
 
     return l
@@ -164,7 +165,7 @@ class VariableManager(manager.Manager):
     self.clear(newsession)
 
     if basesession:
-      for mem in basesession._vars.keys():
+      for mem in list(basesession._vars.keys()):
         newsession._vars[mem] = basesession._vars[mem]
 
   def persist(self, args):
@@ -266,7 +267,7 @@ def variable_cmd(ses, args, input):
     if not quiet:
       exported.write_message("variable: {%s}={%s} added." % (var, expansion), ses)
 
-  except Exception, e:
+  except Exception as e:
     exported.write_error("variable: cannot be set. %s" % e, ses)
 
 commands_dict["variable"] = (variable_cmd, "var= expansion= quiet:boolean=false")
@@ -301,7 +302,7 @@ def load():
 def unload():
   """ Unloads the module by calling any unload/unbind functions."""
   global vm
-  modutils.unload_commands(commands_dict.keys())
+  modutils.unload_commands(list(commands_dict.keys()))
   exported.remove_manager("variable")
 
   exported.hook_unregister("user_filter_hook", vm.userfilter)

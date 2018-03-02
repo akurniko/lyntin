@@ -1,3 +1,4 @@
+from builtins import range
 import profile
 
 def runlots(func, *vargs, **kargs):
