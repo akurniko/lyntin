@@ -4,9 +4,7 @@ from lyntin import exported, manager, utils, ansi
 from . import prompt
 from . import mapper
 from . import cler
-from . import druid
 from . import mage
-from . import necr
 from . import discord
 from . import cmds
 from . import proxy
@@ -92,26 +90,11 @@ class SowmudManager(manager.Manager):
   def get_prompt(self):
     return self._prompt
 
-  def set_bot_druid(self, myself):
-    if self._bot is not None:
-      self.turn_off()
-      self._bot.unregister()
-    self._bot = druid.DruidBot(self._cmd_engine, self._event_classifier, myself)
-    self.turn_on()
-
   def set_bot_mage(self, myself, irc_nick = "lyntin"):
     if self._bot is not None:
       self.turn_off()
       self._bot.unregister()
     self._bot = mage.MageBot(self._cmd_engine, self._event_classifier, myself)
-    self._irker.nickname(irc_nick)
-    self.turn_on()
-
-  def set_bot_necr(self, myself, irc_nick = "lyntin"):
-    if self._bot is not None:
-      self.turn_off()
-      self._bot.unregister()
-    self._bot = necr.NecrBot(self._cmd_engine, self._event_classifier, myself)
     self._irker.nickname(irc_nick)
     self.turn_on()
 

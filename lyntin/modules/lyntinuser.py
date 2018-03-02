@@ -1,14 +1,6 @@
 # -*- coding: utf-8 -*-
 from lyntin import exported
 
-def set_bot_necr(myself, irc_nick):
-  smm = exported.get_manager("sowmud")
-  bot = smm.set_bot_necr(myself, irc_nick)
-
-def set_bot_druid(myself):
-  smm = exported.get_manager("sowmud")
-  bot = smm.set_bot_druid(myself)
-
 def set_bot_mage(myself, irc_nick):
   smm = exported.get_manager("sowmud")
   bot = smm.set_bot_mage(myself, irc_nick)
