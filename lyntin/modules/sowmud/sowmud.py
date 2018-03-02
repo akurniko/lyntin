@@ -5,7 +5,6 @@ from . import prompt
 from . import mapper
 from . import cler
 from . import mage
-from . import discord
 from . import cmds
 from . import proxy
 from . import events
@@ -20,7 +19,6 @@ class SowmudManager(manager.Manager):
     self._prompt = prompt.Prompt(self._event_classifier)
     self._world = mapper.World()
     self._bot = None
-    self._chatbot = discord.ChatBot(self._cmd_engine)
     self._proxy = proxy.Proxy(5556)
     self._irker = irc.Irker("irc.cs.hut.fi", "lyntin")
     threading.Thread(target = self._irker.start).start()
@@ -108,9 +106,6 @@ class SowmudManager(manager.Manager):
 
   def get_bot(self):
     return self._bot
-
-  def get_chat(self):
-    return self._chatbot
 
   def enabled(self):
     return self._enabled
