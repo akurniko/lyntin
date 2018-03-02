@@ -20,7 +20,8 @@ Installation
 
 This version requires Python 3 and ``future`` and ``irc`` packages installed.
 
-```$ virtualenv -p python3 venv3
+```
+   $ virtualenv -p python3 venv3
    $ source venv3/bin/activate
    $ pip install future
    $ pip install irc
