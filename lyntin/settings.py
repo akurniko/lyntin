@@ -1,0 +1,2 @@
+LOCAL_ENCODING="utf-8"
+REMOTE_ENCODING="koi8-r"
