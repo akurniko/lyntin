@@ -1,9 +1,14 @@
-======
 README
 ======
+This is the port of Lyntin to Python 3.
+The port is still work in progress.
+Additionally, there is a small bot for Sowmud.
 
-:Author: Will Guaraldi
-:Version: $Id: README,v 1.6 2007/07/24 00:21:40 willhelm Exp $
+Author: Will Guaraldi
+
+Version: 4.2+
+
+README,v 1.6 2007/07/24 00:21:40 willhelm Exp $
 
 
 
