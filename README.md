@@ -15,6 +15,17 @@ README,v 1.6 2007/07/24 00:21:40 willhelm Exp $
 For more up-to-date information and documentation, please check the 
 web-site: http://Lyntin.sourceforge.net/
 
+Installation
+============
+
+This version requires Python 3 and ``future`` and ``irc`` packages installed.
+
+``$ virtualenv -p python3 venv3
+  $ source venv3/bin/activate
+  $ pip install future
+  $ pip install irc
+  $ python setup.py install
+  $ python scripts/runlyntin``
 
 Why Lyntin
 ==========
